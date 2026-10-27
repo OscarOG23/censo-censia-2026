@@ -46,6 +46,7 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
     <button type="button" id="tab-seguimiento" role="tab" aria-controls="seguimiento" aria-selected="false" class="" data-tab="seguimiento"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Seguimiento</span></button>
     <button type="button" id="tab-resumen" role="tab" aria-controls="resumen" aria-selected="false" class="" data-tab="resumen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg><span>Resumen</span></button>
     <button type="button" id="tab-imprimir" role="tab" aria-controls="imprimir" aria-selected="false" class="" data-tab="imprimir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8V3h12v5M6 17H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6zM18 11h.01"/></svg><span>Imprimir anexos</span></button>
+    <button type="button" id="tab-esavi" role="tab" aria-controls="esavi" aria-selected="false" class="" data-tab="esavi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M12 8v5M12 16h.01"/></svg><span>ESAVI</span></button>
   </nav>
 </div></header>
 
@@ -154,6 +155,8 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
           <div class="campo">Calle <input name="calle"></div>
           <div class="campo">No. ext. <input name="numExt"></div>
           <div class="campo">Teléfono <input name="telefono" inputmode="tel"></div>
+          <div class="campo ancho"><label><input type="checkbox" name="seguimientoWA" value="SI"> Acepta seguimiento por WhatsApp para vigilar molestias después de la vacuna (ESAVI)</label>
+            <span class="hint">Se le enviará una liga a una encuesta breve. Sus datos solo se usan para la vigilancia de la vacunación.</span></div>
         </div>
       </fieldset>
 
@@ -242,6 +245,36 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
       <button class="btn" type="button" id="btnImprimir" onclick="imprimirAnexo()">Generar PDF</button>
       <div id="impMsg" class="msg" role="status" aria-live="polite"></div>
       <ul id="impAvisos" class="hint"></ul>
+    </fieldset>
+  </section>
+
+  <!-- SEGUIMIENTO DE ESAVI (Esavi.js · Lineamientos PVU 2026 §5.5) -->
+  <section id="esavi" role="tabpanel" aria-labelledby="tab-esavi" class="tab">
+    <style>
+      .opciones-check { display:flex; flex-wrap:wrap; gap:6px 16px; margin:4px 0 12px; }
+      .opciones-check label { display:flex; gap:6px; align-items:center; font-size:13px; }
+      .txt-err { color:#b71c1c; }
+    </style>
+    <div class="page-heading"><div><p class="eyebrow">VIGILANCIA POSTVACUNACIÓN</p><h2 id="heading-esavi" tabindex="-1">Seguimiento de ESAVI</h2><p class="description">Contacta por WhatsApp a quienes aceptaron seguimiento, registra eventos y controla los plazos para notificar a la DGE (graves y COVID-19: 24 h; no graves: 48 h).</p></div></div>
+    <div class="filtros">
+      <label class="hint"><input type="checkbox" id="esaviMiUnidad" checked onchange="cargarEsavi()"> Solo mi unidad</label>
+      <button class="btn sec" type="button" onclick="cargarEsavi()">Actualizar</button>
+    </div>
+    <div id="esaviMsg" class="msg" role="status" aria-live="polite"></div>
+    <fieldset><legend>Por contactar hoy</legend><div id="esaviPendientes" class="tabla-wrap"><p class="hint">Cargando…</p></div></fieldset>
+    <fieldset><legend>Conglomerados (2 o más casos con el mismo lote o unidad en 30 días)</legend><div id="esaviConglomerados"></div></fieldset>
+    <fieldset><legend>Reportes de ESAVI</legend><div id="esaviReportes" class="tabla-wrap"></div></fieldset>
+    <fieldset>
+      <legend>Registrar ESAVI reportado en la unidad</legend>
+      <div class="grid">
+        <div class="campo">Folio del registro <input id="esFolio" placeholder="CN26-000123" autocomplete="off"></div>
+        <div class="campo">Inicio de las molestias <input type="date" id="esInicio"></div>
+        <div class="campo">Teléfono de contacto <input id="esTel" inputmode="tel"></div>
+        <div class="campo ancho">Descripción <textarea id="esDesc"></textarea></div>
+      </div>
+      <p class="hint">Molestias</p><div id="esSintomas" class="opciones-check"></div>
+      <p class="hint">Criterios de gravedad (cualquiera = ESAVI grave: notificar en 24 h)</p><div id="esCriterios" class="opciones-check"></div>
+      <button class="btn" type="button" id="btnEsavi" onclick="registrarEsaviUnidad()">Registrar ESAVI</button>
     </fieldset>
   </section>
 </main>
@@ -1399,6 +1432,143 @@ async function imprimirAnexo() {
   }
 }
 
+/* ---------- Seguimiento de ESAVI (servidor: Esavi.js) ---------- */
+let ESAVI_OPCIONES = null;
+
+function msgEsavi(texto, error = false) {
+  const m = $('#esaviMsg');
+  m.textContent = texto;
+  m.className = 'msg ' + (error ? 'err' : 'ok');
+}
+
+function ahoraLocal() {
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16).replace('T', ' ');
+}
+
+async function cargarEsavi() {
+  const clues = $('#esaviMiUnidad').checked ? (CB.clues.valor || '') : '';
+  try {
+    const [pendientes, r] = await Promise.all([llamar('esaviPendientes', clues), llamar('esaviReportes', clues)]);
+    pintarPendientesEsavi(pendientes);
+    pintarConglomerados(r.conglomerados);
+    pintarReportesEsavi(r);
+    if (!ESAVI_OPCIONES) {
+      ESAVI_OPCIONES = r;
+      const casillas = (lista, clase) => lista.map(x =>
+        `<label><input type="checkbox" class="${clase}" value="${esc(x)}"> ${esc(x)}</label>`).join('');
+      $('#esSintomas').innerHTML = casillas(r.sintomas, 'es-s');
+      $('#esCriterios').innerHTML = casillas(r.criterios, 'es-c');
+    }
+  } catch (e) {
+    msgEsavi(e.message, true);
+  }
+}
+
+function pintarPendientesEsavi(lista) {
+  const cont = $('#esaviPendientes');
+  cont.innerHTML = lista.length
+    ? `<table><thead><tr><th>Contacto</th><th>Nombre</th><th>Vacunación</th><th>Teléfono</th><th></th></tr></thead><tbody>${
+      lista.map((p, i) => `<tr>
+        <td>${p.dia === 1 ? 'Día 3' : 'Final'}</td><td>${esc(p.nombre)}</td>
+        <td>${esc(p.fecha)} · ${esc(p.vacunas.join(', '))}</td><td>${esc(p.telefono)}</td>
+        <td>${p.url ? `<button class="btn sec" type="button" data-i="${i}">Enviar WhatsApp</button>` : '<span class="hint">Teléfono no válido</span>'}</td>
+      </tr>`).join('')}</tbody></table>`
+    : '<p class="hint">No hay contactos pendientes hoy.</p>';
+  cont.querySelectorAll('button[data-i]').forEach(b => { b.onclick = () => enviarWhatsApp(lista[+b.dataset.i], b); });
+}
+
+async function enviarWhatsApp(p, boton) {
+  window.open(p.url, '_blank', 'noopener');  // WhatsApp con el mensaje y la liga ya escritos
+  boton.disabled = true;
+  try {
+    await llamar('esaviMarcarEnviado', p.token, p.dia);
+    boton.textContent = 'Enviado ✓';
+  } catch (e) {
+    boton.disabled = false;
+    msgEsavi(e.message, true);
+  }
+}
+
+function pintarConglomerados(lista) {
+  $('#esaviConglomerados').innerHTML = lista.length
+    ? lista.map(g => `<p class="msg err" style="display:block">⚠ Conglomerado por ${g.tipo === 'LOTE' ? 'lote' : 'unidad'}
+        <b>${esc(g.clave)}</b>: ${g.ids.length} reportes (${esc(g.ids.join(', '))}). Notificar a la jurisdicción en las primeras 24 h.</p>`).join('')
+    : '<p class="hint">Sin conglomerados.</p>';
+}
+
+/** Correo listo para enviar (sin CURP ni nombre de la persona). */
+function correoEsavi(e) {
+  const asunto = `${e.grave === 'SI' ? 'ESAVI GRAVE' : 'ESAVI'} ${e.id} · ${e.unidad || e.clues}`;
+  const cuerpo = [
+    `Reporte ${e.id} (${e.fuente}) del ${e.fechaReporte}`,
+    `Unidad: ${e.unidad} (${e.clues}) · Folio del censo: ${e.folio}`,
+    `Vacunas: ${e.vacunas.map(v => `${v.vacuna} (${v.dosis}) lote ${v.lote || 's/l'} aplicada ${v.fecha}`).join('; ')}`,
+    `Molestias: ${e.sintomas}${e.criterios ? ' | Criterios de gravedad: ' + e.criterios : ''}`,
+    `Inicio: ${e.fechaInicio} · Clasificación: ${e.grave === 'SI' ? 'GRAVE' : 'No grave'}${e.covid === 'SI' ? ' (COVID-19)' : ''}`,
+    `Notificar a la DGE antes de: ${e.limite}`
+  ].join('\n');
+  return 'mailto:?subject=' + encodeURIComponent(asunto) + '&body=' + encodeURIComponent(cuerpo);
+}
+
+function pintarReportesEsavi(r) {
+  const opciones = (lista, actual) => lista.map(x => `<option ${x === actual ? 'selected' : ''}>${esc(x)}</option>`).join('');
+  const cont = $('#esaviReportes');
+  cont.innerHTML = r.reportes.length
+    ? `<table><thead><tr><th>Reporte</th><th>Persona</th><th>Vacunas y lote</th><th>Molestias</th><th>Clasificación</th>
+        <th>Notificar a DGE antes de</th><th>Estatus</th><th>Folio DGE</th><th>Dictamen</th><th></th></tr></thead><tbody>${
+      r.reportes.map((e, i) => `<tr data-i="${i}">
+        <td>${esc(e.id)}<br><small>${esc(e.fechaReporte)} · ${esc(e.fuente)}</small></td>
+        <td>${esc(e.nombre)}<br><small>${esc(e.folio)} · ${esc(e.unidad)}</small></td>
+        <td>${e.vacunas.map(v => esc(`${v.vacuna} (${v.dosis}) lote ${v.lote || 's/l'} · ${v.fecha}`)).join('<br>')}</td>
+        <td>${esc(e.sintomas)}${e.criterios ? '<br><b>' + esc(e.criterios) + '</b>' : ''}<br><small>Inicio ${esc(e.fechaInicio)}</small></td>
+        <td>${e.grave === 'SI' ? '<b class="txt-err">GRAVE</b>' : 'No grave'}${e.covid === 'SI' ? ' · COVID-19' : ''}</td>
+        <td class="${e.vencido ? 'txt-err' : ''}">${esc(e.limite)}${e.vencido ? '<br><b>VENCIDO</b>' : ''}</td>
+        <td><select class="es-estatus">${opciones(r.estatus, e.estatus)}</select></td>
+        <td><input class="es-folio" value="${esc(e.folioDGE)}" size="10"></td>
+        <td><select class="es-dictamen"><option value=""></option>${opciones(r.dictamenes, e.dictamen)}</select></td>
+        <td><button class="btn sec es-guardar" type="button">Guardar</button> <a class="btn sec" href="${correoEsavi(e)}">Avisar por correo</a></td>
+      </tr>`).join('')}</tbody></table>`
+    : '<p class="hint">Sin reportes de ESAVI.</p>';
+  cont.querySelectorAll('tr[data-i]').forEach(tr => {
+    const e = r.reportes[+tr.dataset.i];
+    tr.querySelector('.es-guardar').onclick = async () => {
+      const estatus = tr.querySelector('.es-estatus').value;
+      const cambios = { estatus, folioDGE: tr.querySelector('.es-folio').value.trim(), dictamen: tr.querySelector('.es-dictamen').value };
+      if (estatus === 'NOTIFICADO DGE' && !e.fechaNotifDGE) cambios.fechaNotifDGE = ahoraLocal();
+      try {
+        await llamar('esaviActualizar', e.id, cambios);
+        msgEsavi('Reporte ' + e.id + ' actualizado');
+        cargarEsavi();
+      } catch (err) {
+        msgEsavi(err.message, true);
+      }
+    };
+  });
+}
+
+async function registrarEsaviUnidad() {
+  const marcados = clase => [...document.querySelectorAll('.' + clase + ':checked')].map(x => x.value);
+  const folio = $('#esFolio').value.trim().toUpperCase();
+  if (!folio) return msgEsavi('Capture el folio del registro', true);
+  const btn = $('#btnEsavi');
+  btn.disabled = true;
+  try {
+    const r = await llamar('esaviRegistrarUnidad', folio, {
+      sintomas: marcados('es-s'), criterios: marcados('es-c'), fechaInicio: $('#esInicio').value,
+      telefono: $('#esTel').value, descripcion: $('#esDesc').value
+    });
+    msgEsavi(`ESAVI ${r.id} registrado${r.grave ? ' como GRAVE' : ''}. Notificar a la DGE antes de ${r.limite}.`);
+    ['#esFolio', '#esInicio', '#esTel', '#esDesc'].forEach(s => { $(s).value = ''; });
+    document.querySelectorAll('.es-s, .es-c').forEach(x => { x.checked = false; });
+    cargarEsavi();
+  } catch (e) {
+    msgEsavi(e.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 function activarTab(nombre) {
   if (nombre !== 'captura') cerrarCamara();
   document.querySelectorAll('nav button').forEach(x => {
@@ -1410,6 +1580,7 @@ function activarTab(nombre) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('activo', t.id === nombre));
   if (nombre === 'seguimiento') buscar();
   if (nombre === 'resumen') cargarResumen();
+  if (nombre === 'esavi') cargarEsavi();
   if (nombre === 'imprimir') {  // se adelantan las librerías del PDF mientras se eligen los filtros
     cargarLibreria('pdflib').catch(() => {});
     cargarLibreria('fontkit').catch(() => {});
