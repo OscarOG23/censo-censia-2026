@@ -169,8 +169,23 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
           <input type="date" id="fechaAplicacion">
         </div>
         <p id="vacunasConservadas" class="ayuda" role="status"></p>
+        <p class="hint">Si la persona ya traía una dosis (cartilla u otra unidad), cambie <b>Aplicada aquí</b> por <b>Previa</b> y capture su fecha y fuente: se imprime en el censo pero no cuenta como dosis aplicada de la unidad.</p>
         <div id="vacunas"></div>
+        <div id="esquemaBox" class="esquema" role="status" aria-live="polite"></div>
       </fieldset>
+      <style>
+        .dosis .origen { grid-column:1/-1; display:flex; flex-wrap:wrap; gap:10px; }
+        .dosis .origen select, .dosis .origen input { width:auto; flex:1 1 160px; font-size:12px; }
+        .dosis.previa { background:#fbf8ef !important; }
+        .esquema { margin-top:14px; border:1px solid var(--borde); border-radius:10px; padding:12px 16px; background:white; }
+        .esquema:empty { display:none; }
+        .esquema h3 { margin:0 0 8px; font-size:13px; }
+        .esquema ul { margin:0; padding-left:0; list-style:none; }
+        .esquema li { display:flex; flex-wrap:wrap; gap:6px 10px; align-items:baseline; padding:6px 0; border-top:1px solid #edf1eb; font-size:12px; }
+        .etq { font-size:10px; font-weight:700; letter-spacing:.04em; border-radius:999px; padding:2px 8px; text-transform:uppercase; }
+        .etq.ATRASADA { background:#fdecea; color:#b71c1c; } .etq.PENDIENTE { background:#fff4d6; color:#7a5300; }
+        .etq.PROXIMA { background:#e8f1fb; color:#1d4f8a; } .etq.FUERA { background:#eceff1; color:#55606a; }
+      </style>
 
       <fieldset>
         <legend>Seguimiento</legend>
@@ -207,6 +222,13 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
         <tbody></tbody>
       </table>
     </div>
+    <fieldset style="margin-top:24px">
+      <legend>Dosis pendientes de la unidad (esquema 2026)</legend>
+      <p class="hint">Personas de la unidad seleccionada en Captura con dosis atrasadas, que ya les tocan o que les tocan en los próximos 30 días.</p>
+      <button class="btn sec" type="button" id="btnPendientes" onclick="cargarDosisPendientes()">Ver dosis pendientes</button>
+      <div id="pendMsg" class="msg" role="status" aria-live="polite"></div>
+      <div id="pendientes" class="tabla-wrap" hidden></div>
+    </fieldset>
   </section>
 
   <!-- RESUMEN -->
@@ -237,14 +259,17 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
             <option value="carta">Carta (hoja completa, ajustada)</option>
           </select>
         </div>
-        <div class="campo">Capturados desde <input type="date" id="impDesde"></div>
-        <div class="campo">Capturados hasta <input type="date" id="impHasta"></div>
+        <div class="campo">Periodo desde <input type="date" id="impDesde"></div>
+        <div class="campo">Periodo hasta <input type="date" id="impHasta"></div>
       </div>
-      <p class="hint">Una hoja por cada 10 personas (1-A, 1-B) o 12 (1-C), ordenadas por apellido. No incluye registros en BAJA.
+      <p class="hint">Incluye a quien se registró en el periodo o recibió en él una dosis aplicada en la unidad, con su esquema completo (también las dosis previas).
+        Una hoja por cada 10 personas (1-A, 1-B) o 12 (1-C), ordenadas por apellido. No incluye registros en BAJA.
         Zona, delegación, sector, manzana, AGEB del encabezado y la columna de códigos se llenan a mano.</p>
       <button class="btn" type="button" id="btnImprimir" onclick="imprimirAnexo()">Generar PDF</button>
+      <button class="btn sec" type="button" id="btnConteo" onclick="contarDosisAplicadas()">Dosis aplicadas del periodo</button>
       <div id="impMsg" class="msg" role="status" aria-live="polite"></div>
       <ul id="impAvisos" class="hint"></ul>
+      <div id="impConteo" class="tabla-wrap" hidden></div>
     </fieldset>
   </section>
 
@@ -804,6 +829,205 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
 
 </script>
 
+<!-- GENERADO por motor/empaquetar.js — no editar a mano. -->
+<script>
+/* Esquema de vacunación 2026: siguiente dosis por persona y validación de fechas de dosis.
+ * Fuente: Lineamientos Generales PVU 2026 §5.2.2 (págs. 35-48) y enmienda SR/SRP del 18-02-2026.
+ * Los lineamientos dan edades; el intervalo mínimo de 4 semanas entre dosis de una serie infantil es
+ * un supuesto aprobado por el usuario (2026-10-29) y se ajusta en SERIES.
+ * Navegador: window.EsquemaCENSIA; Apps Script: global EsquemaCENSIA; Node: module.exports.
+ */
+(function (raiz, fabrica) {
+  if (typeof module === 'object' && module.exports) module.exports = fabrica();
+  else raiz.EsquemaCENSIA = fabrica();
+})(this, function () {
+  const DIAS_GRACIA = 30;   // después de "desde" la dosis pasa de PENDIENTE a ATRASADA
+  const MIN = 28;           // intervalo mínimo entre dosis (4 semanas)
+  const ORDEN = ['ADICIONAL', 'UNICA', '1A', '2A', '3A', 'REFUERZO'];  // SR adicional = dosis cero (6-11 meses)
+
+  const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+
+  /* ---------- Fechas ISO (yyyy-mm-dd) sin zona horaria ---------- */
+  const aFecha = iso => { const [y, m, d] = iso.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d)); };
+  const aISO = f => f.toISOString().slice(0, 10);
+  const esISO = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) && aISO(aFecha(s)) === s;
+  const masDias = (iso, n) => { const f = aFecha(iso); f.setUTCDate(f.getUTCDate() + n); return aISO(f); };
+  function masMeses(iso, n) {
+    const [y, m, d] = iso.split('-').map(Number);
+    const f = new Date(Date.UTC(y, m - 1 + n, 1));
+    const ultimo = new Date(Date.UTC(f.getUTCFullYear(), f.getUTCMonth() + 1, 0)).getUTCDate();
+    f.setUTCDate(Math.min(d, ultimo));
+    return aISO(f);
+  }
+  const dias = (a, b) => Math.round((aFecha(b) - aFecha(a)) / 86400000);
+  const mayor = (...xs) => xs.filter(Boolean).sort().pop();
+  function edadAnios(nac, hoy) {
+    const [y, m, d] = nac.split('-').map(Number);
+    const [hy, hm, hd] = hoy.split('-').map(Number);
+    return hy - y - (hm < m || (hm === m && hd < d) ? 1 : 0);
+  }
+  const anexoPorEdad = e => e <= 9 ? '1-A' : e <= 19 ? '1-B' : '1-C';
+
+  /* ---------- Origen de la dosis ---------- */
+  const origen = v => norm(v && v.origen) === 'PREVIA' ? 'PREVIA' : 'APLICADA';
+  const esAplicada = v => origen(v) === 'APLICADA';
+
+  /* ---------- Series ----------
+   * dosis: { d: etiqueta del catálogo, edad: meses (o dias), min: días desde la dosis anterior }
+   * hasta(nac): última fecha permitida; aplica(p): si la serie corresponde a la persona.
+   */
+  const NINOS = p => p.edad < 10;
+  const SERIES = [
+    { vacuna: 'BCG', aplica: NINOS, dosis: [{ d: 'ÚNICA', edad: 0 }], hasta: nac => masDias(masMeses(nac, 60), -1) },
+    { vacuna: 'Anti hepatitis B', aplica: NINOS, dosis: [{ d: 'ÚNICA', edad: 0 }], hasta: nac => masDias(nac, 7),
+      nota: 'Después de los 7 días la cubre la Hexavalente' },
+    { vacuna: 'Hexavalente acelular DPaT-VIP-HB-Hib', aplica: NINOS, dosis: [
+      { d: '1a', edad: 2 }, { d: '2a', edad: 4, min: MIN }, { d: '3a', edad: 6, min: MIN }, { d: 'REFUERZO', edad: 18, min: MIN }] },
+    { vacuna: 'Anti rotavirus', aplica: NINOS, dosis: [{ d: '1a', edad: 2 }, { d: '2a', edad: 4, min: MIN }],
+      hasta: nac => masDias(masMeses(nac, 8), -1) },
+    { vacuna: 'Neumocócica conjugada (20 valente)', aplica: NINOS, dosis: [
+      { d: '1a', edad: 2 }, { d: '2a', edad: 4, min: MIN }, { d: '3a', edad: 12, min: MIN }] },
+    { vacuna: 'SRP', aplica: p => p.edad < 13, dosis: [
+      { d: '1a', edad: 12 }, { d: '2a', edad: nac => nac >= '2020-07-01' ? 18 : 72, min: MIN }],
+      hasta: nac => masDias(masMeses(nac, 156), -1) },
+    { vacuna: 'Anti hepatitis A', aplica: NINOS, dosis: [{ d: 'ÚNICA', edad: 18 }] },
+    { vacuna: 'DPT', aplica: NINOS, dosis: [{ d: 'ÚNICA', edad: 48 }], hasta: nac => masDias(masMeses(nac, 84), -1),
+      tras: { vacuna: 'Hexavalente acelular DPaT-VIP-HB-Hib', d: 'REFUERZO', min: 42 } },
+    { vacuna: 'VPH', aplica: p => p.edad >= 9 && p.edad <= 11 && !p.tiene(v => /^VPH/.test(norm(v.vacuna))),
+      dosis: [{ d: 'ÚNICA', edad: 108 }], nota: '5o de primaria u 11 años no escolarizados' },
+    { vacuna: 'Neumocócica conjugada (20 valente)', aplica: p => p.edad >= 60, dosis: [{ d: 'ÚNICA', edad: 720 }] },
+    // Series de riesgo: solo se siguen si ya se aplicó la primera dosis.
+    { vacuna: 'Anti hepatitis B', iniciada: true, aplica: p => p.edad >= 10, dosis: [{ d: '1a', edad: 0 }, { d: '2a', edad: 0, min: MIN }] },
+    { vacuna: 'Anti hepatitis B (adultos)', iniciada: true, aplica: () => true, dosis: [{ d: '1a', edad: 0 }, { d: '2a', edad: 0, min: MIN }] },
+    { vacuna: 'VPH mujeres CIS y TRANS con VIH', iniciada: true, aplica: () => true, dosis: [{ d: '1a', edad: 0 }, { d: '2a', edad: 0, meses: 2 }] },
+    { vacuna: 'VPH hombres CIS y TRANS con VIH', iniciada: true, aplica: () => true,
+      dosis: [{ d: '1a', edad: 0 }, { d: '2a', edad: 0, meses: 2 }, { d: '3a', edad: 0, mesesDesdePrimera: 6 }] },
+  ];
+
+  function estado(desde, hasta, hoy) {
+    if (hasta && (hoy > hasta || desde > hasta)) return 'FUERA DE EDAD';
+    if (desde > hoy) return 'PROXIMA';
+    return dias(desde, hoy) > DIAS_GRACIA ? 'ATRASADA' : 'PENDIENTE';
+  }
+
+  const salida = (vacuna, d, desde, hasta, hoy, nota) =>
+    ({ vacuna, dosis: d, desde, hasta: hasta || '', estado: estado(desde, hasta, hoy), nota: nota || '' });
+
+  function evaluarSerie(s, p, hoy) {
+    const fechas = s.dosis.map(x => p.fecha(s.vacuna, x.d));
+    if (s.iniciada && !fechas[0]) return null;
+    const i = fechas.findIndex(f => !f);
+    if (i < 0) return null;
+    const x = s.dosis[i];
+    const edad = typeof x.edad === 'function' ? x.edad(p.nac) : x.edad;
+    let desde = masMeses(p.nac, edad);
+    if (i > 0 && fechas[i - 1]) {
+      if (x.min) desde = mayor(desde, masDias(fechas[i - 1], x.min));
+      if (x.meses) desde = mayor(desde, masMeses(fechas[i - 1], x.meses));
+    }
+    if (x.mesesDesdePrimera && fechas[0]) desde = mayor(desde, masMeses(fechas[0], x.mesesDesdePrimera));
+    if (s.tras) {
+      const previa = p.fecha(s.tras.vacuna, s.tras.d);
+      if (previa) desde = mayor(desde, masDias(previa, s.tras.min));
+    }
+    return salida(s.vacuna, x.d, desde, s.hasta ? s.hasta(p.nac) : '', hoy, s.nota);
+  }
+
+  /** SR de 10 a 49 años: dos dosis en total de SRP/SR (sin contar la dosis cero). */
+  function evaluarSR(p, hoy) {
+    if (p.edad < 10 || p.edad > 49 || p.embarazada) return null;
+    const previas = p.vacunas.filter(v => /^(SRP|SR)\b/.test(norm(v.vacuna)) && norm(v.dosis) !== 'ADICIONAL')
+      .map(v => v.fecha).sort();
+    if (previas.length >= 2) return null;
+    const vacuna = p.anexo === '1-B' ? 'SR' : 'SR (adultos)';
+    const desde = mayor(masMeses(p.nac, 120), previas.length ? masDias(previas[0], MIN) : '');
+    const nota = previas.length ? 'Falta 1 dosis para completar 2 de SRP/SR' : '2 dosis con intervalo de 4 semanas';
+    return salida(vacuna, 'ÚNICA', desde, masDias(masMeses(p.nac, 600), -1), hoy, nota);
+  }
+
+  /** Td: completo (5 dosis del esquema primario o 3 de Td) → refuerzo cada 10 años; si no, completar 0-1-12. */
+  function evaluarTd(p, hoy) {
+    if (p.edad < 15 && !(p.embarazada && p.edad >= 10)) return null;
+    const contiene = re => p.vacunas.filter(v => re.test(norm(v.vacuna))).map(v => v.fecha).sort();
+    const hexa = contiene(/^HEXAVALENTE/), dpt = contiene(/^DPT/), td = contiene(/^TDPA|^TD\b/);
+    const vacuna = p.anexo === '1-B' ? 'Td' : p.embarazada ? 'Td en embarazadas' : 'Td en población general';
+    const inicio = p.embarazada ? p.nac : masMeses(p.nac, 180);
+    if (Math.min(hexa.length, 4) + Math.min(dpt.length, 1) >= 5 || td.length >= 3) {
+      const ultima = hexa.concat(dpt, td).sort().pop();
+      return salida(vacuna, 'REFUERZO', mayor(inicio, masMeses(ultima, 120)), '', hoy, 'Refuerzo cada 10 años');
+    }
+    const n = td.length;
+    const desde = n === 0 ? inicio : n === 1 ? masDias(td[0], MIN) : masMeses(td[0], 12);
+    return salida(vacuna, ['1a', '2a', '3a'][n], mayor(inicio, desde), '', hoy, 'Esquema 0-1-12 meses');
+  }
+
+  /** Embarazo con FUM: Tdpa desde la semana 20; VSR de la semana 32 a la 36. */
+  function evaluarEmbarazo(p, hoy) {
+    if (!p.embarazada || !esISO(p.fum)) return [];
+    const enEsteEmbarazo = re => p.vacunas.some(v => re.test(norm(v.vacuna)) && v.fecha >= p.fum);
+    const adolescente = p.anexo === '1-B' ? ' (adolescentes embarazadas)' : ' (embarazadas)';
+    const r = [];
+    if (!enEsteEmbarazo(/^TDPA/)) {
+      r.push(salida('Tdpa' + adolescente, 'ÚNICA', masDias(p.fum, 140), masDias(p.fum, 280), hoy,
+        'Preferente entre las semanas 27 y 36'));
+    }
+    if (!enEsteEmbarazo(/^VSR/)) {
+      r.push(salida('VSR' + adolescente, 'ÚNICA', masDias(p.fum, 224), masDias(p.fum, 258), hoy, 'Semanas 32 a 36'));
+    }
+    return r;
+  }
+
+  function persona_(persona, vacunas, hoy) {
+    const nac = persona.fechaNacimiento;
+    const edad = edadAnios(nac, hoy);
+    const lista = (vacunas || []).filter(v => esISO(v.fecha));
+    const fecha = (vacuna, d) => {
+      const v = lista.find(x => norm(x.vacuna) === norm(vacuna) && norm(x.dosis) === norm(d));
+      return v ? v.fecha : '';
+    };
+    return { nac, edad, anexo: anexoPorEdad(edad), vacunas: lista, fecha, fum: persona.fum,
+      embarazada: norm(persona.embarazada) === 'SI', tiene: f => lista.some(f) };
+  }
+
+  /** Siguiente dosis de cada serie que le corresponde a la persona (series completas no aparecen). */
+  function calcular(persona, vacunas, hoy) {
+    if (!persona || !esISO(persona.fechaNacimiento) || !esISO(hoy) || persona.fechaNacimiento > hoy) return [];
+    const p = persona_(persona, vacunas, hoy);
+    const r = SERIES.filter(s => s.aplica(p)).map(s => evaluarSerie(s, p, hoy));
+    return r.concat(evaluarSR(p, hoy), evaluarTd(p, hoy), evaluarEmbarazo(p, hoy)).filter(Boolean);
+  }
+
+  /** Errores de fechas y orden de las dosis capturadas (lista vacía si todo está bien). */
+  function validar(persona, vacunas, hoy) {
+    const e = [];
+    const nac = persona && esISO(persona.fechaNacimiento) ? persona.fechaNacimiento : '';
+    const vistas = {};
+    const nombre = v => `${v.vacuna} (${v.dosis})`;
+    (vacunas || []).forEach(v => {
+      if (!esISO(v.fecha)) return e.push(`${nombre(v)}: fecha no válida`);
+      if (v.fecha > hoy) e.push(`${nombre(v)}: fecha futura`);
+      if (nac && v.fecha < nac) e.push(`${nombre(v)}: fecha anterior al nacimiento`);
+      if (origen(v) === 'PREVIA' && !String(v.fuente || '').trim()) e.push(`${nombre(v)}: indique la fuente de la dosis previa`);
+      const clave = norm(v.vacuna) + '|' + norm(v.dosis);
+      if (vistas[clave]) e.push(`${nombre(v)}: dosis repetida`);
+      vistas[clave] = v;
+    });
+    const series = {};
+    Object.values(vistas).filter(v => esISO(v.fecha)).forEach(v => (series[norm(v.vacuna)] = series[norm(v.vacuna)] || []).push(v));
+    Object.values(series).forEach(lista => {
+      lista.sort((a, b) => ORDEN.indexOf(norm(a.dosis)) - ORDEN.indexOf(norm(b.dosis)));
+      for (let i = 1; i < lista.length; i++) {
+        if (lista[i].fecha < lista[i - 1].fecha) e.push(`${nombre(lista[i])}: fecha anterior a la dosis ${lista[i - 1].dosis}`);
+      }
+    });
+    return e;
+  }
+
+  return { calcular, validar, origen, esAplicada, ESTADOS: ['PENDIENTE', 'ATRASADA', 'PROXIMA', 'FUERA DE EDAD'] };
+});
+
+</script>
+
 <script>
 const $ = (s, r = document) => r.querySelector(s);
 const frm = $('#frm');
@@ -1105,11 +1329,48 @@ function refrescarPersona() {
   $('#edadOut').textContent = edad + ' años · ';
   $('#anexoOut').textContent = 'Anexo ' + anexo;
   if (anexo !== anexoActual) renderVacunas(anexo, leerVacunas());
+  pintarEsquema();
 }
 
 function hoyLocalISO() {
   const d = new Date();
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
+/** Aplicada aquí (lote del catálogo) o Previa (fecha real, fuente y lote libre). */
+function cambiarOrigen(row, origen) {
+  const previa = origen === 'PREVIA';
+  row.classList.toggle('previa', previa);
+  row.querySelector('.fu').hidden = !previa;
+  row.querySelector('.lp').hidden = !previa;
+  row.querySelector('.combo').hidden = previa;
+  row.querySelector('.cad').hidden = previa;
+  if (previa) {
+    if (!row.querySelector('.m').checked) marcarDosis(row, true);
+    // La fecha general es la de hoy: una dosis previa necesita su fecha real.
+    if (!row.dataset.propia) row.querySelector('.f').value = '';
+  }
+  pintarEsquema();
+}
+
+const ESTADO_DOSIS = { ATRASADA: 'Atrasada', PENDIENTE: 'Le toca', PROXIMA: 'Próxima', 'FUERA DE EDAD': 'Fuera de edad' };
+const fechaMx = iso => iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4) : '';
+
+/** Siguientes dosis según el esquema 2026 (EsquemaVacunas.html), con lo capturado en pantalla. */
+function pintarEsquema() {
+  const box = $('#esquemaBox');
+  if (!box) return;
+  const nac = frm.fechaNacimiento.value;
+  if (!nac || !window.EsquemaCENSIA) { box.innerHTML = ''; return; }
+  const persona = { fechaNacimiento: nac, sexo: frm.sexo.value, embarazada: frm.embarazada.value, fum: frm.fum.value };
+  const lista = EsquemaCENSIA.calcular(persona, leerVacunas(), hoyLocalISO());
+  box.innerHTML = '<h3>Siguientes dosis (esquema 2026)</h3>' + (lista.length
+    ? '<ul>' + lista.map(x => `<li><span class="etq ${x.estado.split(' ')[0]}">${ESTADO_DOSIS[x.estado]}</span>
+        <b>${esc(x.vacuna)} (${esc(x.dosis)})</b>
+        <span>${x.estado === 'FUERA DE EDAD' ? 'hasta ' + fechaMx(x.hasta) : 'desde ' + fechaMx(x.desde)}</span>
+        ${x.nota ? `<span class="hint">${esc(x.nota)}</span>` : ''}</li>`).join('') + '</ul>'
+    : '<p class="hint">Esquema al corriente para su edad con las dosis capturadas.</p>') +
+    '<p class="hint">Orientativo. No incluye vacunas de temporada ni las que dependen de un criterio de riesgo no capturado.</p>';
 }
 
 function marcarDosis(row, marcada) {
@@ -1138,6 +1399,11 @@ function renderVacunas(anexo, previas = []) {
           <input type="date" class="f" aria-label="Fecha de ${esc(v.nombre)}, dosis ${esc(d)}" title="Fecha de esta dosis (si no fue la general)" disabled>
           <input class="lote" aria-label="Lote de ${esc(v.nombre)}, dosis ${esc(d)}" autocomplete="off" placeholder="Lote">
           <input class="cad" aria-label="Caducidad de ${esc(v.nombre)}, dosis ${esc(d)}" readonly placeholder="Caducidad">
+          <div class="origen">
+            <select class="o" aria-label="Origen de ${esc(v.nombre)}, dosis ${esc(d)}"><option value="APLICADA">Aplicada aquí</option><option value="PREVIA">Previa (ya la traía)</option></select>
+            <select class="fu" aria-label="Fuente de la dosis previa" hidden><option value="">Fuente de la dosis previa…</option><option>CARTILLA</option><option>OTRA UNIDAD</option><option>REFERIDA</option></select>
+            <input class="lp" aria-label="Lote de la dosis previa (opcional)" placeholder="Lote (opcional)" autocomplete="off" hidden>
+          </div>
         </div>`).join('') +
       `</details>`).join('');
 
@@ -1150,6 +1416,7 @@ function renderVacunas(anexo, previas = []) {
     row._c = Combo(input, v => alCambiarLote(row, v));
     row._c.opts(cache[nombre], false);
     row.querySelector('.m').addEventListener('change', e => marcarDosis(row, e.target.checked));
+    row.querySelector('.o').addEventListener('change', e => cambiarOrigen(row, e.target.value));
     row.querySelector('.f').addEventListener('input', () => { row.dataset.propia = '1'; });
   });
 
@@ -1176,8 +1443,15 @@ function renderVacunas(anexo, previas = []) {
       row.dataset.bio = p.biologico || '';
       row.querySelector('.cad').value = p.caducidad || '';
     }
+    if (p.origen === 'PREVIA') {
+      row.querySelector('.o').value = 'PREVIA';
+      row.querySelector('.fu').value = p.fuente || '';
+      row.querySelector('.lp').value = p.lote || '';
+      cambiarOrigen(row, 'PREVIA');
+    }
     if (p.fecha) row.closest('details').open = true;
   });
+  pintarEsquema();
   $('#vacunasConservadas').textContent = vacunasNoVisibles.length
     ? vacunasNoVisibles.length + ' dosis previa(s) de otros esquemas se conservarán al guardar.' : '';
 }
@@ -1185,14 +1459,19 @@ function renderVacunas(anexo, previas = []) {
 function leerVacunas() {
   return [...document.querySelectorAll('.dosis')]
     .filter(r => r.querySelector('.m').checked)
-    .map(r => ({
-      vacuna: r.dataset.vac,
-      dosis: r.dataset.dosis,
-      fecha: r.querySelector('.f').value,
-      lote: r.dataset.lote || '',
-      caducidad: r.querySelector('.cad').value.trim(),
-      biologico: r.dataset.bio || ''
-    }))
+    .map(r => {
+      const previa = r.querySelector('.o').value === 'PREVIA';
+      return {
+        vacuna: r.dataset.vac,
+        dosis: r.dataset.dosis,
+        fecha: r.querySelector('.f').value,
+        lote: previa ? r.querySelector('.lp').value.trim().toUpperCase() : (r.dataset.lote || ''),
+        caducidad: previa ? '' : r.querySelector('.cad').value.trim(),
+        biologico: previa ? '' : (r.dataset.bio || ''),
+        origen: previa ? 'PREVIA' : 'APLICADA',
+        fuente: previa ? r.querySelector('.fu').value : ''
+      };
+    })
     .filter(v => v.fecha).concat(vacunasNoVisibles);
 }
 
@@ -1252,11 +1531,13 @@ async function guardar(ev) {
   const sinFecha = [...document.querySelectorAll('.dosis')].some(r => r.querySelector('.m').checked && !r.querySelector('.f').value);
   if (sinFecha) { msg('Capture la fecha de las dosis marcadas', true); return false; }
   const sinLote = [...document.querySelectorAll('.dosis')]
-    .filter(r => r.querySelector('.m').checked && !r.dataset.lote);
+    .filter(r => r.querySelector('.m').checked && r.querySelector('.o').value !== 'PREVIA' && !r.dataset.lote);
   if (sinLote.length) {
     msg('Falta el lote en: ' + sinLote.map(r => r.dataset.vac + ' (' + r.dataset.dosis + ')').join(', '), true);
     return false;
   }
+  const erroresDosis = EsquemaCENSIA.validar(d, d.vacunas, hoyLocalISO());
+  if (erroresDosis.length) { msg(erroresDosis.join('. '), true); return false; }
 
   const btn = frm.querySelector('button[type=submit]');
   btn.disabled = true;
@@ -1297,6 +1578,7 @@ function nuevo(conservarMensaje = false) {
   $('#vacunasConservadas').textContent = '';
   $('#tituloForm').textContent = 'Nuevo registro';
   $('#vacunas').innerHTML = '';
+  $('#esquemaBox').innerHTML = '';
   $('#pistaVac').style.display = '';
   if (!conservarMensaje) $('#msg').className = 'msg';
   mostrarCurp([]);
@@ -1322,6 +1604,30 @@ async function abrir(folio) {
   refrescarPersona();
   validarEnVivo();
   activarTab('captura');
+}
+
+async function cargarDosisPendientes() {
+  const clues = CB.clues.valor;
+  const m = $('#pendMsg'), cont = $('#pendientes'), btn = $('#btnPendientes');
+  if (!clues) { m.className = 'msg err'; m.textContent = 'Seleccione su unidad en la pestaña Captura'; return; }
+  btn.disabled = true;
+  m.className = 'msg';
+  try {
+    const filas = await llamar('dosisPendientes', clues);
+    cont.hidden = false;
+    cont.innerHTML = filas.length
+      ? `<table><thead><tr><th>Estado</th><th>Desde</th><th>Vacuna</th><th>Nombre</th><th>Edad</th><th>Teléfono</th><th></th></tr></thead><tbody>` +
+        filas.map(x => `<tr><td><span class="etq ${x.estado.split(' ')[0]}">${ESTADO_DOSIS[x.estado]}</span></td>
+          <td>${fechaMx(x.desde)}</td><td>${esc(x.vacuna)} (${esc(x.dosis)})</td><td>${esc(x.nombre)}</td>
+          <td>${esc(x.edad)}</td><td>${esc(x.telefono)}</td>
+          <td><button class="btn sec" onclick="abrir('${esc(x.folio)}')">Abrir</button></td></tr>`).join('') + '</tbody></table>'
+      : '<p class="hint" style="padding:16px">Sin dosis pendientes en la unidad.</p>';
+  } catch (e) {
+    m.className = 'msg err';
+    m.textContent = e.message;
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 async function buscar() {
@@ -1386,6 +1692,24 @@ function descargarPdf(bytes, nombre) {
   // Respaldo por si el navegador bloquea la descarga automática
   $('#impAvisos').insertAdjacentHTML('afterbegin',
     `<li><a href="${url}" target="_blank" download="${esc(nombre)}">Abrir ${esc(nombre)}</a></li>`);
+}
+
+/** Dosis aplicadas en la unidad en el periodo (sin previas), por vacuna y dosis. */
+async function contarDosisAplicadas() {
+  const clues = CBI.impClues.valor;
+  if (!clues) return msgImp('Seleccione la unidad (CLUES)', true);
+  const cont = $('#impConteo');
+  try {
+    const r = await llamar('dosisAplicadas', { clues, desde: $('#impDesde').value, hasta: $('#impHasta').value });
+    cont.hidden = false;
+    cont.innerHTML = r.filas.length
+      ? `<table><thead><tr><th>Vacuna</th><th>Dosis</th><th>Aplicadas</th></tr></thead><tbody>` +
+        r.filas.map(x => `<tr><td>${esc(x.vacuna)}</td><td>${esc(x.dosis)}</td><td>${x.total}</td></tr>`).join('') +
+        `<tr><td><b>Total</b></td><td></td><td><b>${r.total}</b></td></tr></tbody></table>`
+      : '<p class="hint" style="padding:16px">Sin dosis aplicadas en el periodo.</p>';
+  } catch (e) {
+    msgImp(e.message, true);
+  }
 }
 
 async function imprimirAnexo() {
@@ -1763,9 +2087,15 @@ async function alCambiarCP() {
 }
 frm.cp.addEventListener('input', alCambiarCP);
 
+['change', 'input'].forEach(ev => $('#vacunas').addEventListener(ev, e => {
+  if (e.target.matches('.f, .m, .fu')) pintarEsquema();
+}));
+['embarazada', 'fum', 'sexo'].forEach(n => frm.elements[n].addEventListener('change', pintarEsquema));
+
 $('#fechaAplicacion').addEventListener('change', e => {
   document.querySelectorAll('.dosis').forEach(row => {
-    if (row.querySelector('.m').checked && !row.dataset.propia) row.querySelector('.f').value = e.target.value;
+    if (row.querySelector('.m').checked && !row.dataset.propia &&
+      row.querySelector('.o').value !== 'PREVIA') row.querySelector('.f').value = e.target.value;
   });
 });
 
