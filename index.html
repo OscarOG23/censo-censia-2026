@@ -46,9 +46,22 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
     <button type="button" id="tab-seguimiento" role="tab" aria-controls="seguimiento" aria-selected="false" class="" data-tab="seguimiento"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M3 6h.01M3 12h.01M3 18h.01"/></svg><span>Seguimiento</span></button>
     <button type="button" id="tab-resumen" role="tab" aria-controls="resumen" aria-selected="false" class="" data-tab="resumen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></svg><span>Resumen</span></button>
     <button type="button" id="tab-imprimir" role="tab" aria-controls="imprimir" aria-selected="false" class="" data-tab="imprimir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8V3h12v5M6 17H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6zM18 11h.01"/></svg><span>Imprimir anexos</span></button>
-    <button type="button" id="tab-esavi" role="tab" aria-controls="esavi" aria-selected="false" class="" data-tab="esavi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M12 8v5M12 16h.01"/></svg><span>ESAVI</span></button>
+    <button type="button" id="tab-esavi" role="tab" aria-controls="esavi" aria-selected="false" class="" data-tab="esavi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M12 8v5M12 16h.01"/></svg><span>ESAVI <b id="cuentaAlertas" class="etq ATRASADA" hidden></b></span></button>
+    <button type="button" id="tab-usuarios" role="tab" aria-controls="usuarios" aria-selected="false" class="" data-tab="usuarios" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6M17 11l2 2 4-4"/></svg><span>Usuarios</span></button>
   </nav>
+  <div class="sesion-chip" id="sesionChip" hidden><span id="sesUsuario"></span><button type="button" class="btn sec" id="btnSalir">Salir</button></div>
 </div></header>
+
+<div id="entrada" class="entrada" role="dialog" aria-modal="true" aria-labelledby="entradaTitulo" hidden>
+  <form class="entrada-caja" id="frmEntrada">
+    <h2 id="entradaTitulo">Censo Nominal CENSIA 2026</h2>
+    <p class="hint">Entre con el usuario y la clave de su unidad, coordinación, jurisdicción o región. Si no la tiene, pídala a la región.</p>
+    <div class="campo"><label for="entUsuario">Usuario</label><input id="entUsuario" name="usuario" autocomplete="username" autocapitalize="characters" spellcheck="false" placeholder="Su CLUES, p. ej. MCIMB000856" required></div>
+    <div class="campo"><label for="entClave">Clave</label><input id="entClave" name="clave" type="password" autocomplete="current-password" autocapitalize="none" spellcheck="false" required></div>
+    <button class="btn" type="submit" id="btnEntrar">Entrar</button>
+    <div id="entradaMsg" class="msg" role="alert"></div>
+  </form>
+</div>
 
 <main id="contenido" tabindex="-1">
   <!-- CAPTURA -->
@@ -60,6 +73,15 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
       <button class="btn sec" type="button" onclick="nuevo()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/><rect x="3" y="3" width="18" height="18" rx="4"/></svg>Nuevo registro</button>
     </div>
 
+    <details class="vac" id="buscaCurp">
+      <summary>Buscar CURP en otras unidades</summary>
+      <p class="hint">Escriba la CURP completa para saber si la persona ya está registrada en otra unidad. Cada consulta queda registrada; límite de 30 al día.</p>
+      <div class="filtros">
+        <input id="bcCurp" maxlength="18" autocomplete="off" spellcheck="false" aria-label="CURP completa" placeholder="CURP de 18 caracteres">
+        <button class="btn sec" type="button" id="btnBuscarCurp">Buscar</button>
+      </div>
+      <div id="bcResultado" role="status" aria-live="polite"></div>
+    </details>
     <form id="frm" onsubmit="return guardar(event)">
 
       <fieldset>
@@ -170,12 +192,28 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
         </div>
         <p id="vacunasConservadas" class="ayuda" role="status"></p>
         <p class="hint">Si la persona ya traía una dosis (cartilla u otra unidad), cambie <b>Aplicada aquí</b> por <b>Previa</b> y capture su fecha y fuente: se imprime en el censo pero no cuenta como dosis aplicada de la unidad.</p>
+        <div class="modo-dosis" id="modoDosis" hidden>
+          <button type="button" class="activo" data-modo="APLICADA" aria-pressed="true">Aplicar hoy <span id="cuentaAPLICADA"></span></button>
+          <button type="button" data-modo="PREVIA" aria-pressed="false">Ya las tiene (dosis previas) <span id="cuentaPREVIA"></span></button>
+        </div>
+        <p class="hint" id="pistaModo"></p>
         <div id="vacunas"></div>
         <div id="esquemaBox" class="esquema" role="status" aria-live="polite"></div>
       </fieldset>
       <style>
-        .dosis .origen { grid-column:1/-1; display:flex; flex-wrap:wrap; gap:10px; }
-        .dosis .origen select, .dosis .origen input { width:auto; flex:1 1 160px; font-size:12px; }
+        .dosis .origen { grid-column:1/-1; display:grid; grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr)); gap:10px; }
+        .dosis .origen[hidden] { display:none; }
+        .dosis .origen label.mini { display:flex; flex-direction:column; gap:4px; font-size:11px; font-weight:600; color:var(--muted); }
+        .dosis .origen label.nc { display:flex; flex-direction:row; align-items:center; gap:6px; font-size:11px; font-weight:600; min-height:28px; }
+        .dosis .origen label.nc input { width:18px; height:18px; min-height:18px; }
+        .modo-dosis { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+        .modo-dosis[hidden] { display:none; }
+        .est-signos { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(220px,100%),1fr)); gap:6px 16px; }
+        .est-signos .campo { grid-column:1/-1; }
+        .est-marca { display:flex; align-items:center; gap:8px; min-height:36px; font-size:12px; color:var(--ink); }
+        #vacunas[data-modo=PREVIA] .dosis:not(.previa) .combo, #vacunas[data-modo=PREVIA] .dosis:not(.previa) .cad { display:none; }
+        .modo-dosis button { flex:1 1 180px; min-height:44px; padding:8px 12px; border:1px solid var(--borde); border-radius:9px; background:white; color:var(--verde); font-size:13px; font-weight:650; }
+        .modo-dosis button.activo { background:var(--verde); color:white; border-color:var(--verde); }
         .dosis.previa { background:#fbf8ef !important; }
         .esquema { margin-top:14px; border:1px solid var(--borde); border-radius:10px; padding:12px 16px; background:white; }
         .esquema:empty { display:none; }
@@ -184,6 +222,16 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
         .esquema li { display:flex; flex-wrap:wrap; gap:6px 10px; align-items:baseline; padding:6px 0; border-top:1px solid #edf1eb; font-size:12px; }
         .etq { font-size:10px; font-weight:700; letter-spacing:.04em; border-radius:999px; padding:2px 8px; text-transform:uppercase; }
         .etq.ATRASADA { background:#fdecea; color:#b71c1c; } .etq.PENDIENTE { background:#fff4d6; color:#7a5300; }
+        .entrada { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:16px; background:var(--page); overflow-y:auto; }
+        .entrada-caja { width:100%; max-width:400px; display:flex; flex-direction:column; gap:16px; background:var(--surface); border:1px solid var(--borde); border-radius:16px; padding:28px 24px; box-shadow:var(--shadow); }
+        .entrada-caja h2 { margin:0; font-size:20px; color:var(--ink); }
+        #entClave { text-transform:none; }
+        .sesion-chip { display:flex; flex-wrap:wrap; align-items:center; gap:10px; font-size:12px; font-weight:600; color:var(--muted); }
+        .sesion-chip .btn { min-height:38px; padding:8px 14px; }
+        body[data-perfil=consulta] #frm button[type=submit], body[data-perfil=consulta] #buscaCurp { display:none; }
+        #bcResultado .msg { display:block; }
+        body[data-perfil=consulta] #frm::before { content:'Perfil de consulta: puede ver el registro; la captura la hace la unidad.'; display:block; margin-bottom:16px; padding:12px 16px; border-radius:10px; background:var(--gold-soft); color:var(--gold); font-size:13px; }
+        .clave-nueva { font-size:22px; font-weight:700; letter-spacing:.06em; text-transform:none; user-select:all; }
         .etq.PROXIMA { background:#e8f1fb; color:#1d4f8a; } .etq.FUERA { background:#eceff1; color:#55606a; }
       </style>
 
@@ -286,9 +334,24 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
       <button class="btn sec" type="button" onclick="cargarEsavi()">Actualizar</button>
     </div>
     <div id="esaviMsg" class="msg" role="status" aria-live="polite"></div>
+    <fieldset id="alertasBox" hidden><legend>Alertas de ESAVI de sus unidades</legend><div id="alertasTabla" class="tabla-wrap"></div></fieldset>
     <fieldset><legend>Por contactar hoy</legend><div id="esaviPendientes" class="tabla-wrap"><p class="hint">Cargando…</p></div></fieldset>
     <fieldset><legend>Conglomerados (2 o más casos con el mismo lote o unidad en 30 días)</legend><div id="esaviConglomerados"></div></fieldset>
-    <fieldset><legend>Reportes de ESAVI</legend><div id="esaviReportes" class="tabla-wrap"></div></fieldset>
+    <fieldset><legend>Reportes de ESAVI</legend><div id="esaviReportes" class="tabla-wrap"></div>
+      <div class="filtros" style="margin-top:12px">
+        <label class="hint">Inicio de síntomas desde <input type="date" id="estDesde"></label>
+        <label class="hint">hasta <input type="date" id="estHasta"></label>
+        <button class="btn sec" type="button" id="btnEstFilas">Copiar filas del periodo para la máscara</button>
+      </div>
+    </fieldset>
+    <fieldset id="estudioPanel" hidden>
+      <legend id="estudioTitulo">Estudio epidemiológico</legend>
+      <p class="hint">Revise lo prellenado y complete el resto. Los códigos son los de la máscara DGE 2026. Para entregar, pegue la fila en la primera fila vacía de "Base de Datos" del archivo .xlsm.</p>
+      <div id="estudioForm"></div>
+      <div id="estudioFaltan" class="ayuda" role="status"></div>
+      <div class="filtros" id="estudioAcciones"></div>
+      <div id="estudioMsg" class="msg" role="status" aria-live="polite"></div>
+    </fieldset>
     <fieldset>
       <legend>Registrar ESAVI reportado en la unidad</legend>
       <div class="grid">
@@ -301,6 +364,22 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
       <p class="hint">Criterios de gravedad (cualquiera = ESAVI grave: notificar en 24 h)</p><div id="esCriterios" class="opciones-check"></div>
       <button class="btn" type="button" id="btnEsavi" onclick="registrarEsaviUnidad()">Registrar ESAVI</button>
     </fieldset>
+  </section>
+  <!-- USUARIOS (solo región) -->
+  <section id="usuarios" role="tabpanel" aria-labelledby="tab-usuarios" class="tab">
+    <div class="page-heading"><div><p class="eyebrow">ADMINISTRACIÓN</p><h2 id="heading-usuarios" tabindex="-1">Usuarios y claves</h2><p class="description">Cada unidad entra con su CLUES; coordinaciones y jurisdicciones ven solo sus unidades. La clave se muestra una sola vez al generarla: anótela y entréguela a la persona responsable.</p></div></div>
+    <div class="filtros">
+      <input id="usFiltro" placeholder="Buscar usuario, unidad o rol" autocomplete="off">
+      <button class="btn sec" type="button" id="btnUsCrear">Crear usuarios que falten (desde el catálogo)</button>
+      <button class="btn sec" type="button" id="btnUsClaves">Generar claves faltantes y descargar lista</button>
+    </div>
+    <details class="vac"><summary>Coordinaciones de las unidades (fuente oficial JST)</summary>
+      <p class="hint">Pegue dos columnas, CLUES y COORDINACIÓN, una unidad por renglón (archivo docs/acceso/coordinaciones_jst.csv). Después use "Crear usuarios que falten" para crear los usuarios de coordinación.</p>
+      <textarea id="usCoord" spellcheck="false" placeholder="MCIMB000856,CEAPS SAN SALVADOR ATENCO"></textarea>
+      <button class="btn sec" type="button" id="btnUsCoord" style="margin:10px 0">Guardar coordinaciones</button>
+    </details>
+    <div id="usClave" class="msg" role="status" aria-live="polite"></div>
+    <div class="tabla-wrap"><table id="usTabla"><thead><tr><th>Usuario</th><th>Rol</th><th>Nombre</th><th>Correo</th><th>Estado</th><th>Último acceso</th><th></th></tr></thead><tbody></tbody></table></div>
   </section>
 </main>
 <footer class="app-footer"><strong>CENSIA · Censo nominal de vacunación</strong><span>Registro y seguimiento · 2026</span></footer>
@@ -765,6 +844,344 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
   return { CAMPOS, filaPersona, ajustarTexto, llenarAnexo };
 });
 
+/* Estudio epidemiológico de ESAVI: los 259 campos de la máscara DGE 2026 (hoja Registro → Base de Datos).
+ * El número de cada campo es su columna en "Base de Datos", en el orden de la macro CapturadeDatos.
+ * Sin dependencias: se usa en el servidor (EstudioEsaviLogica.js), el navegador y Node (pruebas).
+ */
+(function (raiz, fabrica) {
+  if (typeof module === 'object' && module.exports) module.exports = fabrica();
+  else raiz.EstudioESAVI = fabrica();
+})(this, function () {
+  const TOTAL_COLUMNAS = 259;
+  const MAX_VACUNAS = 6;
+  const NO = '2', SI = '1';
+  const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+
+  // Listas de la hoja LISTA de la máscara.
+  const SINO = [[SI, '1 = Sí'], [NO, '2 = No']];
+  const SINO_DESC = [[SI, '1 = Sí'], [NO, '2 = No'], ['3', '3 = Se desconoce']];
+  const VACUNAS = ['ANTIRRABICA', 'ANTIALACRAN', 'ANTINEUMOCOCICA', 'ANTIVIPERINA', 'BCG', 'COVID-19', 'DENGUE', 'DPT',
+    'FIEBRE AMARILLA', 'HEPATITIS A', 'HEPATITIS B', 'HERPES ZOSTER', 'HEXAVALENTE', 'INFLUENZA', 'INMUNOGLOBULINA',
+    'MENINGOCOCO', 'MPOX', 'NEUMOCOCO 13 VALENTE', 'NEUMOCOCO 20 VALENTE', 'NEUMOCOCO 23 VALENTE', 'OTRAS',
+    'PENTAVALENTE', 'ROTAVIRUS', 'SR', 'SRP', 'TD', 'TDPA'].map(v => [v, v]);
+  const DOSIS = ['1A', '2A', '3A', 'REFUERZO'].map(v => [v, v]);
+  const VIAS = ['I.M.', 'I.V.', 'SUBCUTANEA', 'INTRADERMICA', 'ORAL'].map(v => [v, v]);
+  const SITIOS = ['BRAZO DERECHO', 'BRAZO IZQUIERDO', 'MUSLO DERECHO', 'MUSLO IZQUIERDO', 'BOCA'].map(v => [v, v]);
+  const INSTITUCIONES = ['SSA', 'IMSS', 'ISSSTE', 'IMSS-BIEN', 'IMSS-OPD', 'DIF', 'PEMEX', 'SEDENA', 'SEMAR', 'PRIVADA', 'OTRAS'].map(v => [v, v]);
+  const MARCA = [['', 'No'], [SI, 'Sí']];
+
+  // [columna, etiqueta del formato, tipo, opciones]; tipos: texto, num, fecha, lista, marca.
+  const t = (col, etiqueta) => [col, etiqueta, 'texto'];
+  const f = (col, etiqueta) => [col, etiqueta, 'fecha'];
+  const n = (col, etiqueta) => [col, etiqueta, 'num'];
+  const l = (col, etiqueta, opciones) => [col, etiqueta, 'lista', opciones];
+  const m = (col, etiqueta) => [col, etiqueta, 'marca', MARCA];
+
+  const VAC_COLS = { vacuna: 68, dosis: 74, fecha: 80, denominacion: 86, laboratorio: 92, lote: 98, caducidad: 104,
+    loteDiluyente: 110, cadDiluyente: 116, via: 122, sitio: 128 };
+  const filaVacuna = i => [
+    l(VAC_COLS.vacuna + i, `Vacuna ${i + 1}`, VACUNAS), l(VAC_COLS.dosis + i, `Dosis ${i + 1}`, DOSIS),
+    f(VAC_COLS.fecha + i, `Fecha de aplicación ${i + 1}`), t(VAC_COLS.denominacion + i, `Denominación distintiva ${i + 1}`),
+    t(VAC_COLS.laboratorio + i, `Laboratorio productor ${i + 1}`), t(VAC_COLS.lote + i, `Lote de la vacuna ${i + 1}`),
+    f(VAC_COLS.caducidad + i, `Caducidad de la vacuna ${i + 1}`), t(VAC_COLS.loteDiluyente + i, `Lote del diluyente ${i + 1}`),
+    f(VAC_COLS.cadDiluyente + i, `Caducidad del diluyente ${i + 1}`), l(VAC_COLS.via + i, `Vía ${i + 1}`, VIAS),
+    l(VAC_COLS.sitio + i, `Sitio ${i + 1}`, SITIOS),
+  ];
+
+  const SIGNOS = ['Fiebre ≥ 38 °C', 'Cefalea', 'Astenia/fatiga', 'Adinamia', 'Llanto persistente', 'Irritabilidad', 'Escalofríos',
+    '1. Induración/nódulo', '2. Dolor/sensibilidad', '3. Eritema/enrojecimiento', '4. Edema general', '5. Edema reacción local',
+    '6. Celulitis', '7. Prurito general', '8. Prurito reacción local', '9. Absceso', '10. Aumento local de temperatura', '11. Mareo',
+    '12. Exantema', '13. Hiporexia', '14. Púrpura', '15a. Adenopatía axilar', '15b. Adenopatía cervical', '15c. Adenopatía supraclavicular',
+    '15d. Adenopatía, otras', '16. Linfadenopatía', '17. Bcgosis', '18. Náusea', '19. Vómito', '20. Dolor abdominal', '21. Diarrea',
+    '22. Evacuaciones sanguinolentas', '23. Invaginación intestinal', '24. Taquicardia', '25. Rinorrea', '26. Dolor faríngeo', '27. Tos',
+    '28. Espasmo bronquial', '29. Neumonía', '30. Disnea/dificultad respiratoria', '31. Púrpura trombocitopénica',
+    '32. Manifestaciones hemorrágicas', '33. Choque hipovolémico', '34. Mialgia', '35. Artralgia', '36. Lesión osteoarticular',
+    '37. Lesión ocular', '38. Crisis convulsivas afebril', '39. Crisis convulsivas febril', '40. Parálisis flácida aguda',
+    '41. Síndrome de Guillain-Barré', '42. Meningitis', '43. Encefalitis', '44. Septicemia', '45. Choque anafiláctico/anafilaxia',
+    '46. Síncope', '47. Síndrome de Stevens-Johnson', '48. Limitación del movimiento', '49. Otro'];
+  const COL_SIGNO_1 = 157;
+
+  const SECCIONES = [
+    { titulo: 'I. Datos del paciente', campos: [t(1, 'Folio'), n(2, 'Semana epidemiológica'), t(3, 'No. de afiliación'), t(4, 'No. de expediente'),
+      t(5, 'CURP'), t(6, 'Apellido paterno'), t(7, 'Apellido materno'), t(8, 'Nombre(s)'), f(9, 'Fecha de nacimiento'),
+      n(10, 'Edad: años'), n(11, 'Edad: meses'), n(12, 'Edad: días'), l(13, 'Sexo', [['1', '1. Masculino'], ['2', '2. Femenino']]),
+      t(14, 'Domicilio actual'), t(15, 'Entidad federativa de nacimiento'), t(16, 'Municipio/alcaldía de nacimiento'),
+      t(17, 'Localidad de nacimiento'), t(18, 'C.P.'), t(19, 'Teléfono'), t(20, 'Correo electrónico'), t(21, 'Responsable del menor'),
+      l(22, '¿Se reconoce como indígena?', SINO), l(23, '¿Habla alguna lengua indígena?', SINO), t(24, 'Ocupación'), l(25, 'Es migrante', SINO),
+      t(26, 'País de nacionalidad'), t(27, 'País de origen'), t(28, 'País de tránsito 1'), t(29, 'País de tránsito 2'),
+      t(30, 'País de tránsito 3'), t(31, 'Otro país'), f(32, 'Fecha de ingreso al país')] },
+    { titulo: 'II. Unidad notificante', campos: [t(33, 'Nombre de la unidad'), l(34, 'Institución', INSTITUCIONES), t(35, 'CLUES'), t(36, 'Estado'),
+      t(37, 'Jurisdicción sanitaria'), t(38, 'Municipio'), f(39, 'Notificación a la jurisdicción'), f(40, 'Notificación a nivel estatal'),
+      f(41, 'Inicio del estudio por la unidad'), f(42, 'Notificación a nivel nacional')] },
+    { titulo: 'III. Unidad vacunadora', campos: [t(43, 'Estado'), t(44, 'Jurisdicción sanitaria'), t(45, 'Municipio'), t(46, 'Nombre de la unidad'),
+      l(47, 'Institución vacunadora', INSTITUCIONES), t(48, 'CLUES'), t(49, 'Nombre del vacunador(a)'), t(50, 'Escolaridad'),
+      t(51, 'Antigüedad en el puesto'), l(52, 'Adscrito a inmunizaciones/medicina preventiva', SINO), t(53, 'Última capacitación'),
+      l(54, 'Vacunado en el extranjero', SINO), t(55, 'País en el que fue vacunado')] },
+    { titulo: 'IV. Antecedentes previos a la vacunación', campos: [l(56, '¿Mujer embarazada?', SINO), n(57, 'Semanas de gestación'),
+      l(58, 'Enfermedad infecciosa en los últimos 15 días', SINO), f(59, 'Fecha de la infección'), l(60, '¿Aparentemente sano antes de vacunarse?', SINO),
+      t(61, '¿Cuál o cuáles?'), t(62, 'Tratamiento'), l(63, '¿Medicamentos inmunosupresores?', [['1', '1 = Sí'], ['2', '2 = No'], ['3', '3 = Desconoce']]),
+      l(64, 'Tipo de medicamento', [['1', '1 = Corticosteroides'], ['2', '2 = Citotóxicos']]), l(65, '¿Padece alguna alergia?', SINO),
+      l(66, 'Tipo de alergia', [['1', '1. Alimentos'], ['2', '2. Medicamentos'], ['3', '3. Polen'], ['4', '4. Lo ignora'], ['5', '5. Otro']]),
+      t(67, 'Especifica')] },
+    { titulo: 'V. Datos de la vacunación', campos: [].concat(...Array.from({ length: MAX_VACUNAS }, (_, i) => filaVacuna(i))).concat([
+      l(134, 'Sitio de vacunación', [['1', '1 = Intramuros'], ['2', '2 = Extramuros']]), l(135, 'Presentación', [['1', '1 = Unidosis'], ['2', '2 = Multidosis']]),
+      f(136, 'Apertura del frasco multidosis'), n(137, 'Personas vacunadas con el mismo lote'), n(138, 'Personas vacunadas con el mismo frasco'),
+      l(146, '¿Hubo error en la aplicación?', SINO), m(139, 'Error: edad incorrecta'), m(140, 'Error: sitio incorrecto'), m(141, 'Error: vía incorrecta'),
+      m(142, 'Error: vacuna incorrecta'), m(143, 'Error: dosis incorrecta'), m(144, 'Error: de reconstitución'), m(145, 'Error: otros'), t(147, 'Especifique el error')]) },
+    { titulo: 'VI. Cuadro clínico', campos: [f(148, 'Primer contacto con los servicios de salud'), n(149, 'Hora de inicio del primer signo o síntoma'),
+      n(150, 'Minutos'), f(151, 'Inicio del primer signo o síntoma'), n(152, 'Intervalo: minutos'), n(153, 'Intervalo: horas'),
+      n(154, 'Intervalo: días'), n(155, 'Intervalo: meses'), n(156, 'Intervalo: años')] },
+    { titulo: 'VII. Descripción del ESAVI', signos: true, campos: SIGNOS.map((s, i) => m(COL_SIGNO_1 + i, s)).concat([t(216, '50. Especifique'),
+      t(217, 'Descripción del cuadro clínico'), t(218, 'Tratamiento administrado'), l(219, '¿El familiar administró algún remedio previo?', SINO), t(220, '¿Cuál?')]) },
+    { titulo: 'VIII. Tipo de ESAVI', campos: [l(221, 'Tipo de ESAVI', [['1', '1. Grave'], ['2', '2. No grave']]), t(222, 'Biológico atribuible al ESAVI')] },
+    { titulo: 'IX. Evaluación de la causalidad', campos: [m(223, 'A. Asociación causal consistente con la vacunación'), m(224, 'A1) Relacionado con la vacuna'),
+      m(225, 'A2) Defecto en la calidad de la vacuna'), m(226, 'A3) Error programático/técnico'), m(227, 'B. Indeterminado'),
+      m(228, 'C. Asociación causal inconsistente (coincidente)'), m(229, 'D. Condiciones inherentes al vacunado'), m(230, 'E. Inclasificable')] },
+    { titulo: 'X. Unidad tratante (ESAVI grave)', grave: true, campos: [t(231, 'Estado'), t(232, 'Jurisdicción sanitaria'), t(233, 'Municipio'),
+      t(234, 'Nombre de la unidad'), l(235, 'Institución', INSTITUCIONES), t(236, 'CLUES'), l(237, 'Requirió hospitalización', SINO), f(238, 'Fecha de hospitalización'),
+      t(239, 'Diagnóstico de ingreso'), f(240, 'Fecha de egreso'), t(241, 'Diagnóstico de egreso'), n(242, 'Días de hospitalización')] },
+    { titulo: 'XI. Evolución (ESAVI grave)', grave: true, campos: [l(243, 'Estado actual', [['1', '1. Hospitalizado'], ['2', '2. Egreso/alta por mejoría'], ['3', '3. Defunción']]),
+      f(244, 'Fecha de defunción'), t(245, 'Causas de la defunción'), t(246, 'Folio del certificado')] },
+    { titulo: 'XII. Estado de salud actual (ESAVI grave)', grave: true, campos: [l(247, 'Recuperación', SINO), l(248, 'Presenta secuelas', SINO_DESC), t(249, 'Especifique secuelas')] },
+    { titulo: 'XIII. Elaboración', campos: [t(250, 'Observaciones'), l(251, 'Pertenece a un conglomerado', SINO), t(252, 'Núm. de NOTINMED'),
+      f(253, 'Inicio del conglomerado'), t(254, 'Elaboró el estudio'), t(257, 'Cargo'), t(255, 'Revisó (jurisdicción)'), t(258, 'Cargo'),
+      t(256, 'Validó (estatal)'), t(259, 'Cargo')] },
+  ].map(s => Object.assign({}, s, { campos: s.campos.map(([col, etiqueta, tipo, opciones]) => ({ col, etiqueta, tipo, opciones })) }));
+
+  const CAMPOS = {};
+  SECCIONES.forEach(s => s.campos.forEach(c => { CAMPOS[c.col] = c; }));
+
+  /* ---------- Fechas ---------- */
+  const esISO = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || ''));
+  const utc = iso => { const [a, b, c] = iso.slice(0, 10).split('-').map(Number); return Date.UTC(a, b - 1, c); };
+  const DIA = 86400000;
+  const fechaMascara = iso => (esISO(iso) ? iso.split('-').reverse().join('/') : String(iso || ''));
+
+  /** Semana epidemiológica mexicana: empieza en domingo; la semana 1 tiene al menos 4 días de enero. */
+  function semanaEpi(iso) {
+    const inicio = a => {  // domingo de la semana 1 del año a
+      const ene1 = new Date(Date.UTC(a, 0, 1));
+      const dow = ene1.getUTCDay();
+      return ene1.getTime() + (dow <= 3 ? -dow : 7 - dow) * DIA;
+    };
+    const t0 = utc(iso);
+    const a = Number(iso.slice(0, 4));
+    let base = inicio(a + 1) <= t0 ? inicio(a + 1) : inicio(a);
+    if (t0 < base) base = inicio(a - 1);
+    return Math.floor((t0 - base) / (7 * DIA)) + 1;
+  }
+
+  /** Años, meses y días cumplidos entre dos fechas ISO. */
+  function edadCompleta(nac, ref) {
+    const [a1, m1, d1] = nac.split('-').map(Number);
+    const [a2, m2, d2] = ref.split('-').map(Number);
+    let anios = a2 - a1, meses = m2 - m1, dias = d2 - d1;
+    if (dias < 0) { meses--; dias += new Date(Date.UTC(a2, m2 - 1, 0)).getUTCDate(); }
+    if (meses < 0) { anios--; meses += 12; }
+    return { anios, meses, dias };
+  }
+
+  /* ---------- Equivalencias de la app a la máscara ---------- */
+  // La lista oficial no incluye VPH, Varicela ni VSR: van como OTRAS con su nombre en la denominación.
+  const VACUNA_MASCARA = [[/^BCG/, 'BCG'], [/^ANTI HEPATITIS B/, 'HEPATITIS B'], [/^ANTI HEPATITIS A/, 'HEPATITIS A'],
+    [/^NEUMOCOCICA CONJUGADA \(20/, 'NEUMOCOCO 20 VALENTE'], [/^HEXAVALENTE/, 'HEXAVALENTE'], [/^ANTI ROTAVIRUS/, 'ROTAVIRUS'],
+    [/^SRP/, 'SRP'], [/^SR\b/, 'SR'], [/^DPT/, 'DPT'], [/^COVID-19/, 'COVID-19'], [/^TDPA/, 'TDPA'], [/^TD\b/, 'TD']];
+  function vacunaMascara(nombre) {
+    const x = norm(nombre);
+    const hallada = VACUNA_MASCARA.find(([re]) => re.test(x));
+    return hallada ? hallada[1] : 'OTRAS';
+  }
+  // La lista de la máscara no trae ÚNICA ni ADICIONAL.
+  const dosisMascara = d => ({ '1A': '1A', '2A': '2A', '3A': '3A', REFUERZO: 'REFUERZO', UNICA: '1A', ADICIONAL: 'REFUERZO' }[norm(d)] || '');
+  /** Vía habitual por vacuna; la unidad la confirma. */
+  function viaSugerida(mascara, nombre) {
+    if (mascara === 'BCG') return 'INTRADERMICA';
+    if (mascara === 'ROTAVIRUS') return 'ORAL';
+    if (mascara === 'SRP' || mascara === 'SR' || /VARICELA/.test(norm(nombre))) return 'SUBCUTANEA';
+    return 'I.M.';  // incluye VPH y VSR
+  }
+  /** Nombre que distingue a la vacuna: las de OTRAS conservan el suyo (VPH, Varicela, VSR). */
+  const nombreDistintivo = v => (vacunaMascara(v) === 'OTRAS' ? String(v).toUpperCase() : vacunaMascara(v));
+  const col = texto => COL_SIGNO_1 + SIGNOS.findIndex(s => s.includes(texto));
+  // Síntoma de la encuesta → signo oficial; los ambiguos pasan a la descripción para que clínica decida.
+  const SINTOMA_SIGNO = {
+    'DOLOR EN EL SITIO': col('Dolor/sensibilidad'), ENROJECIMIENTO: col('Eritema'), 'HINCHAZON': col('Edema reacción local'),
+    'ABSCESO O PUS': col('Absceso'), 'FIEBRE >38 °C': col('Fiebre'), 'SARPULLIDO O RONCHAS': col('Exantema'),
+    'LLANTO PERSISTENTE (MAS DE 3 HORAS)': col('Llanto'), 'DECAIMIENTO O SOMNOLENCIA': col('Astenia'),
+    'DIFICULTAD PARA RESPIRAR': col('Disnea'), OTRO: col('49. Otro'),
+  };
+  const CAUSALIDAD = { A1: [223, 224], A2: [223, 225], A3: [223, 226], B: [227], C: [228], D: [229], E: [230] };
+
+  /** Valores iniciales {columna: texto}. fuentes = { persona, dosis[], reporte, unidad{nombre,clues,estado,jurisdiccion,municipio,institucion}, conMismoLote, hoy } */
+  function prellenar({ persona: p, dosis, reporte: r, unidad: u, conMismoLote, hoy }) {
+    const v = {};
+    const fijar = (c, x) => { if (x !== undefined && x !== null && x !== '') v[c] = String(x); };
+    const inicio = esISO(r.fechaInicio) ? r.fechaInicio : '';
+    fijar(1, r.id);
+    if (inicio) fijar(2, semanaEpi(inicio));
+    if (p.curp !== 'SIN CURP') fijar(5, p.curp);
+    fijar(6, p.paterno); fijar(7, p.materno); fijar(8, p.nombre); fijar(9, p.fechaNacimiento);
+    if (esISO(p.fechaNacimiento) && inicio) {
+      const e = edadCompleta(p.fechaNacimiento, inicio);
+      fijar(10, e.anios); fijar(11, e.meses); fijar(12, e.dias);
+    }
+    fijar(13, { H: '1', M: '2' }[p.sexo]);
+    fijar(14, [p.calle, p.numExt, p.colonia].filter(Boolean).join(' ').toUpperCase());
+    fijar(18, p.cp); fijar(19, p.telefono); fijar(21, p.acompNombre);
+    fijar(22, norm(p.indigena) === 'SI' ? SI : NO);
+    [[33, 36, 37, 38, 34, 35], [46, 43, 44, 45, 47, 48]].forEach(([nom, edo, jur, mun, ins, clu]) => {
+      fijar(nom, u.nombre); fijar(edo, u.estado); fijar(jur, u.jurisdiccion); fijar(mun, u.municipio); fijar(ins, u.institucion); fijar(clu, u.clues);
+    });
+    fijar(41, hoy);
+    if (p.embarazada === 'SI') {
+      fijar(56, SI);
+      if (esISO(p.fum)) fijar(57, Math.floor((utc(hoy) - utc(p.fum)) / (7 * DIA)));
+    } else fijar(56, NO);
+
+    dosis.slice(0, MAX_VACUNAS).forEach((d, i) => {
+      const nombre = vacunaMascara(d.vacuna);
+      fijar(VAC_COLS.vacuna + i, nombre);
+      fijar(VAC_COLS.dosis + i, dosisMascara(d.dosis));
+      fijar(VAC_COLS.fecha + i, d.fecha);
+      if (nombre === 'OTRAS') fijar(VAC_COLS.denominacion + i, String(d.vacuna).toUpperCase());
+      fijar(VAC_COLS.lote + i, d.lote);
+      fijar(VAC_COLS.caducidad + i, d.caducidad);
+      fijar(VAC_COLS.via + i, viaSugerida(nombre, d.vacuna));
+      if (nombre === 'BCG') fijar(VAC_COLS.sitio + i, 'BRAZO DERECHO');
+      if (nombre === 'ROTAVIRUS') fijar(VAC_COLS.sitio + i, 'BOCA');
+    });
+    fijar(137, conMismoLote);
+
+    fijar(148, String(r.fechaReporte || '').slice(0, 10));
+    fijar(151, inicio);
+    const ultima = dosis.map(d => d.fecha).filter(esISO).sort().pop();
+    if (inicio && ultima) fijar(154, Math.round((utc(inicio) - utc(ultima)) / DIA));
+
+    const sintomas = String(r.sintomas || '').split(', ').filter(Boolean);
+    const sinSigno = [];
+    sintomas.forEach(s => {
+      const c = SINTOMA_SIGNO[norm(s)];
+      if (c) v[c] = SI; else sinSigno.push(s);
+    });
+    fijar(217, [r.descripcion, sinSigno.length ? 'Reportó: ' + sinSigno.join(', ') : '',
+      r.criterios ? 'Criterios de gravedad: ' + r.criterios : ''].filter(Boolean).join('. '));
+    fijar(221, r.grave === 'SI' ? '1' : '2');
+    if (dosis.length === 1) fijar(222, nombreDistintivo(dosis[0].vacuna));
+    (CAUSALIDAD[r.dictamen] || []).forEach(c => { v[c] = SI; });
+    const criterios = String(r.criterios || '');
+    if (r.grave === 'SI') {
+      fijar(237, criterios.includes('HOSPITALIZACIÓN') ? SI : '');
+      if (criterios.includes('DEFUNCIÓN')) fijar(243, '3');
+    }
+    return v;
+  }
+
+  /** Fila de 259 valores en el orden de "Base de Datos"; fechas dd/mm/aaaa. */
+  function fila(valores) {
+    return Array.from({ length: TOTAL_COLUMNAS }, (_, i) => {
+      const c = CAMPOS[i + 1];
+      const x = valores[i + 1];
+      if (x === undefined || x === null) return '';
+      const texto = String(x).replace(/[\t\r\n]+/g, ' ').trim();
+      return c.tipo === 'fecha' ? fechaMascara(texto) : (c.tipo === 'texto' ? texto.toUpperCase() : texto);
+    });
+  }
+
+  /** Lo que falta para marcar el estudio como elaborado. */
+  function faltantes(v) {
+    const e = [];
+    const vacio = c => !String(v[c] == null ? '' : v[c]).trim();
+    [[8, 'Nombre del paciente'], [9, 'Fecha de nacimiento'], [13, 'Sexo'], [35, 'CLUES notificante'], [48, 'CLUES vacunadora'], [68, 'Vacuna 1'],
+      [80, 'Fecha de aplicación 1'], [98, 'Lote 1'], [122, 'Vía 1'], [128, 'Sitio 1'], [151, 'Inicio del primer signo o síntoma'],
+      [221, 'Tipo de ESAVI'], [254, 'Quién elaboró el estudio'], [257, 'Cargo de quien elaboró']]
+      .forEach(([c, nombre]) => { if (vacio(c)) e.push(nombre); });
+    for (let i = 0; i < MAX_VACUNAS; i++) {  // OTRAS sin nombre no distingue VPH, Varicela ni VSR
+      if (v[VAC_COLS.vacuna + i] === 'OTRAS' && vacio(VAC_COLS.denominacion + i)) e.push(`Denominación distintiva ${i + 1} (la vacuna va como OTRAS)`);
+    }
+    const hayMarca = Array.from({ length: SIGNOS.length }, (_, i) => COL_SIGNO_1 + i).some(c => !vacio(c));
+    if (!hayMarca) e.push('Al menos un signo o síntoma');
+    if (v[221] === '1') {
+      [[234, 'Unidad tratante'], [236, 'CLUES tratante'], [237, 'Requirió hospitalización'], [243, 'Estado actual'], [247, 'Recuperación'], [248, 'Secuelas']]
+        .forEach(([c, nombre]) => { if (vacio(c)) e.push(nombre + ' (ESAVI grave)'); });
+    }
+    if (v[243] === '3' && vacio(244)) e.push('Fecha de defunción');
+    if (v[237] === SI && vacio(238)) e.push('Fecha de hospitalización');
+    return e;
+  }
+
+  return { SECCIONES, CAMPOS, TOTAL_COLUMNAS, VACUNAS, semanaEpi, edadCompleta, vacunaMascara, dosisMascara, prellenar, fila, faltantes, fechaMascara };
+});
+
+/* Llena el estudio de ESAVI sobre el fondo oficial (plantilla/esavi.py) usando mapa_esavi.json.
+ * Navegador: requiere window.PDFLib, LlenadoCENSIA y EstudioESAVI; expone window.LlenadoESAVI.
+ * Node: module.exports. El mapa usa puntos PDF con origen arriba-izquierda.
+ */
+(function (raiz, fabrica) {
+  if (typeof module === 'object' && module.exports) module.exports = fabrica(require('./llenado.js'), require('./estudio_esavi.js'));
+  else raiz.LlenadoESAVI = fabrica(raiz.LlenadoCENSIA, raiz.EstudioESAVI);
+})(this, function (L, E) {
+  // El cuadro clínico es de un renglón en Excel, pero abajo queda espacio libre en el formato.
+  const CAJA_EXTRA = { 217: 17, 218: 16 };
+  // La columna 223 (A de causalidad) vive en B152, sin casilla visible: va en la fila, no en el PDF.
+  const SIN_DIBUJO = new Set([223]);
+  const PARTES_FECHA = [0.3, 0.3, 0.4];  // Día, Mes y Año bajo la misma celda
+
+  /** Campos del estudio que no cupieron completos. */
+  function ajustar(fuente, valor, c) {
+    return L.ajustarTexto(valor, { ancho: c.w - 1, alto: c.h, fmax: Math.min(c.h * 0.72, 6.5), medir: (t, z) => fuente.widthOfTextAtSize(t, z) });
+  }
+
+  function escribir(pagina, fuente, alto, c, lineas, tam, PDFLib, centrado) {
+    const inter = tam * 1.15;
+    const inicio = alto - c.y - (c.h - lineas.length * inter) / 2 - tam * 0.95;
+    lineas.forEach((linea, i) => {
+      const ancho = fuente.widthOfTextAtSize(linea, tam);
+      pagina.drawText(linea, {
+        x: centrado ? c.x + (c.w - ancho) / 2 : c.x + 0.5, y: inicio - i * inter, size: tam, font: fuente, color: PDFLib.rgb(0, 0, 0),
+      });
+    });
+  }
+
+  async function llenarEstudio({ PDFLib, mapa, fondo, valores, letra, fontkit }) {
+    const doc = await PDFLib.PDFDocument.load(fondo);
+    if (letra && fontkit) doc.registerFontkit(fontkit);
+    const fuente = letra && fontkit ? await doc.embedFont(letra, { subset: true })
+      : await doc.embedFont(PDFLib.StandardFonts.Helvetica);
+    const paginas = doc.getPages();
+    const fila = E.fila(valores);
+    const avisos = [];
+    fila.forEach((valor, i) => {
+      if (!valor || SIN_DIBUJO.has(i + 1)) return;
+      const col = i + 1;
+      const base = mapa.celdas[col];
+      const campo = E.CAMPOS[col];
+      const pagina = paginas[base.p];
+      const caja = CAJA_EXTRA[col] ? Object.assign({}, base, { h: CAJA_EXTRA[col] }) : base;
+      if (campo.tipo === 'fecha') {
+        const partes = valor.split('/');
+        if (partes.length === 3) {
+          let x = base.x;
+          partes.forEach((parte, k) => {
+            const w = base.w * PARTES_FECHA[k];
+            const seg = Object.assign({}, base, { x, w });
+            const a = ajustar(fuente, parte, seg);
+            escribir(pagina, fuente, mapa.pagina.h, seg, a.lineas, a.tam, PDFLib, true);
+            x += w;
+          });
+          return;
+        }
+      }
+      const a = ajustar(fuente, valor, caja);
+      if (a.lineas.join('').endsWith('…')) avisos.push(`${campo.etiqueta}: no cupo completo en el PDF (sí va completo en la fila de la máscara)`);
+      const centrado = campo.tipo !== 'texto';
+      escribir(pagina, fuente, mapa.pagina.h, caja, a.lineas, a.tam, PDFLib, centrado);
+    });
+    return { pdf: await doc.save(), avisos };
+  }
+
+  return { llenarEstudio };
+});
+
 </script>
 
 <!-- GENERADO por motor/empaquetar.js — no editar a mano. -->
@@ -1027,7 +1444,13 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
       if (!esISO(v.fecha)) return e.push(`${nombre(v)}: fecha no válida`);
       if (v.fecha > hoy) e.push(`${nombre(v)}: fecha futura`);
       if (nac && v.fecha < nac) e.push(`${nombre(v)}: fecha anterior al nacimiento`);
-      if (origen(v) === 'PREVIA' && !String(v.fuente || '').trim()) e.push(`${nombre(v)}: indique la fuente de la dosis previa`);
+      if (origen(v) === 'PREVIA') {
+        if (!String(v.fuente || '').trim()) e.push(`${nombre(v)}: indique la fuente de la dosis previa`);
+        // Si la cartilla no lo trae se escribe NO CONSTA: así nadie inventa un dato para llenar el campo.
+        if (!String(v.lote || '').trim()) e.push(`${nombre(v)}: indique el lote o marque "No consta"`);
+        if (!String(v.caducidad || '').trim()) e.push(`${nombre(v)}: indique la caducidad o marque "No consta"`);
+        if (esISO(v.caducidad) && v.caducidad < v.fecha) e.push(`${nombre(v)}: caducidad anterior a la aplicación`);
+      }
       const clave = norm(v.vacuna) + '|' + norm(v.dosis);
       if (vistas[clave]) e.push(`${nombre(v)}: dosis repetida`);
       vistas[clave] = v;
@@ -1058,15 +1481,238 @@ const CB = {}; // campos con filtrado y cascada
 // Dentro de Apps Script usa google.script.run. Publicada fuera de Google (GitHub Pages, ver
 // motor/web.js) llama a la API por POST sin cookies: así no choca con la cuenta de Google
 // del teléfono (en Android Google rechazaba la app). Ver app/Api.js.
-const llamar = (fn, ...args) => (window.google && google.script && google.script.run)
-  ? new Promise((ok, err) => google.script.run.withSuccessHandler(ok).withFailureHandler(err)[fn](...args))
-  : fetch(window.API_CENSIA, {
-      method: 'POST', credentials: 'omit', redirect: 'follow',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },  // evita la verificación previa (CORS)
-      body: JSON.stringify({ fn, args })
-    })
-      .then(r => { if (!r.ok) throw new Error('Servidor no disponible (HTTP ' + r.status + ')'); return r.json(); })
-      .then(r => { if (!r.ok) throw new Error(r.error); return r.valor; });
+/* ---------- Sesión (servidor: Acceso.js; puerta única: Api.js) ---------- */
+const CLAVE_SESION = 'censia.sesion';
+let SESION = null;
+try { SESION = JSON.parse(localStorage.getItem(CLAVE_SESION) || 'null'); } catch (e) { SESION = null; }
+
+function guardarSesion(s) {
+  SESION = s;
+  try { s ? localStorage.setItem(CLAVE_SESION, JSON.stringify(s)) : localStorage.removeItem(CLAVE_SESION); } catch (e) { /* sin almacenamiento */ }
+}
+
+const llamar = (fn, ...args) => {
+  const pedido = { fn, args, ficha: SESION ? SESION.ficha : '' };
+  const respuesta = (window.google && google.script && google.script.run)
+    ? new Promise((ok, err) => google.script.run.withSuccessHandler(ok).withFailureHandler(err).api(pedido))
+    : fetch(window.API_CENSIA, {
+        method: 'POST', credentials: 'omit', redirect: 'follow',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },  // evita la verificación previa (CORS)
+        body: JSON.stringify(pedido)
+      })
+        .then(r => { if (!r.ok) throw new Error('Servidor no disponible (HTTP ' + r.status + ')'); return r.json(); })
+        .then(r => { if (!r.ok) throw new Error(r.error); return r.valor; });
+  return respuesta.catch(e => {
+    const m = /^SESION:\s*(.*)$/.exec((e && e.message) || '');
+    if (m) {
+      guardarSesion(null);
+      pedirEntrada(m[1]);
+      const aviso = new Error(m[1]);
+      aviso.sesion = true;  // ya se mostró la entrada; no es un error de la página
+      throw aviso;
+    }
+    throw e;
+  });
+};
+window.addEventListener('unhandledrejection', ev => { if (ev.reason && ev.reason.sesion) ev.preventDefault(); });
+
+function pedirEntrada(aviso) {
+  $('#entrada').hidden = false;
+  $('#sesionChip').hidden = true;
+  const m = $('#entradaMsg');
+  m.textContent = aviso || '';
+  m.className = 'msg' + (aviso ? ' err' : '');
+  setTimeout(() => $('#entUsuario').focus(), 50);
+}
+
+$('#frmEntrada').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = $('#btnEntrar'), m = $('#entradaMsg');
+  btn.disabled = true;
+  btn.setAttribute('aria-busy', 'true');
+  m.className = 'msg';
+  try {
+    guardarSesion(await llamar('iniciarSesion', $('#entUsuario').value, $('#entClave').value));
+    $('#entClave').value = '';
+    $('#entrada').hidden = true;
+    arrancar();
+  } catch (err) {
+    m.textContent = err.message;
+    m.className = 'msg err';
+  } finally {
+    btn.disabled = false;
+    btn.removeAttribute('aria-busy');
+  }
+});
+
+$('#btnSalir').addEventListener('click', async () => {
+  try { await llamar('cerrarSesion'); } catch (e) { /* la sesión se borra de todos modos */ }
+  guardarSesion(null);
+  location.reload();
+});
+
+/** Ajusta la pantalla al perfil: la unidad captura solo en su CLUES; los supervisores consultan. */
+function aplicarPerfil() {
+  const s = SESION;
+  $('#sesionChip').hidden = false;
+  $('#sesUsuario').textContent = s.rol === 'UNIVERSAL' ? s.nombre : s.usuario + ' · ' + (s.nombre || s.rol);
+  $('#btnSalir').hidden = s.rol === 'UNIVERSAL';
+  $('#buscaCurp').hidden = s.rol !== 'UNIDAD';  // con acceso general ya se ven todas las unidades
+  document.body.dataset.perfil = s.captura ? 'unidad' : 'consulta';
+  $('#tab-captura').hidden = !s.captura;
+  $('#tab-usuarios').hidden = !s.administra;
+  if (s.rol === 'UNIDAD') {
+    const u = CAT.unidades.find(r => r.clues === s.ambito);
+    if (u) {
+      CB.clues.fijar(u.clues, true);
+      CBI.impJur.fijar(u.jurisdiccion, true);
+      actualizarImp();
+      CBI.impMun.fijar(u.municipio, true);
+      actualizarImp();
+      CBI.impClues.fijar(u.clues, true);
+    }
+    ['jurisdiccion', 'munUnidad', 'clues', 'impJur', 'impMun', 'impClues'].forEach(id => { $('#' + id).readOnly = true; });
+  }
+  if (s.rol !== 'UNIDAD') {
+    $('#alertasBox').hidden = false;
+    cargarAlertas();
+  }
+  if (!s.captura) {
+    $('#esaviMiUnidad').closest('label').hidden = true;
+    activarTab('seguimiento');
+  }
+}
+
+/* ---------- Búsqueda intencional por CURP (servidor: Expediente.js) ---------- */
+async function buscarCurpOtras() {
+  const curp = $('#bcCurp').value.trim().toUpperCase();
+  const cont = $('#bcResultado'), btn = $('#btnBuscarCurp');
+  const aviso = (texto, error = false) => { cont.innerHTML = `<div class="msg ${error ? 'err' : 'ok'}">${esc(texto)}</div>`; };
+  btn.disabled = true;
+  try {
+    const r = await llamar('buscarCurp', curp);
+    if (r.estado === 'NO_REGISTRADA') return aviso('Esta CURP no está registrada en ninguna unidad. Puede capturarla normalmente.');
+    if (r.estado === 'EN_MI_UNIDAD') {
+      cont.innerHTML = `<div class="msg ok">Ya está registrada en su unidad, folio ${esc(r.folio)}.</div>
+        <button class="btn sec" type="button" onclick="abrir('${esc(r.folio)}')">Abrir registro</button>`;
+      return;
+    }
+    cont.innerHTML = `<div class="msg ok"><b>${esc(r.nombre)}</b> · nacimiento ${fechaMx(r.fechaNacimiento)}<br>
+        Registrada en ${esc(r.unidad)} (${esc(r.clues)}) el ${fechaMx(r.fechaRegistro)}</div>
+      <div class="tabla-wrap"><table><thead><tr><th>Vacuna</th><th>Dosis</th><th>Fecha</th><th>Lote</th><th>Caducidad</th></tr></thead><tbody>` +
+      (r.esquema.map(v => `<tr><td>${esc(v.vacuna)}</td><td>${esc(v.dosis)}</td><td>${fechaMx(v.fecha)}</td>
+        <td>${esc(v.lote)}</td><td>${esc(v.caducidad)}</td></tr>`).join('') || '<tr><td colspan="5">Sin dosis registradas</td></tr>') +
+      `</tbody></table></div>
+      <p class="hint">Se crea una copia en su unidad con estas dosis como previas. El registro de la otra unidad no cambia.</p>
+      <button class="btn" type="button" id="btnTraerCurp">Traer a mi unidad</button>`;
+    $('#btnTraerCurp').onclick = () => traerExpediente(curp);
+  } catch (e) {
+    aviso(e.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function traerExpediente(curp) {
+  const cont = $('#bcResultado');
+  $('#btnTraerCurp').disabled = true;
+  try {
+    const r = await llamar('traerAMiUnidad', curp);
+    cont.innerHTML = '';
+    $('#bcCurp').value = '';
+    $('#buscaCurp').open = false;
+    await abrir(r.folio);
+    msg(`Expediente traído: folio ${r.folio}, ${r.dosis} dosis previa(s). Revise los datos y guarde si hay cambios.`);
+  } catch (e) {
+    cont.insertAdjacentHTML('beforeend', `<div class="msg err">${esc(e.message)}</div>`);
+    $('#btnTraerCurp').disabled = false;
+  }
+}
+
+$('#btnBuscarCurp').addEventListener('click', buscarCurpOtras);
+$('#bcCurp').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); buscarCurpOtras(); } });
+
+/* ---------- Usuarios (solo región) ---------- */
+let USUARIOS = [];
+const ROL_TXT = { UNIDAD: 'Unidad', COORDINACION: 'Coordinación', JURISDICCION: 'Jurisdicción', REGION: 'Región' };
+
+async function cargarUsuarios() {
+  try {
+    USUARIOS = await llamar('usuariosListar');
+    pintarUsuarios();
+  } catch (e) { msgUsuarios(esc(e.message), true); }
+}
+
+function msgUsuarios(html, error = false) {
+  const m = $('#usClave');
+  m.innerHTML = html;
+  m.className = 'msg ' + (error ? 'err' : 'ok');
+}
+
+function pintarUsuarios() {
+  const q = norm($('#usFiltro').value);
+  const filas = USUARIOS.filter(u => !q || norm([u.usuario, u.nombre, u.rol, u.ambito].join(' ')).includes(q));
+  $('#usTabla tbody').innerHTML = filas.map(u => `<tr>
+      <td><b>${esc(u.usuario)}</b></td><td>${esc(ROL_TXT[u.rol] || u.rol)}</td><td>${esc(u.nombre)}</td>
+      <td><button class="btn sec" type="button" data-correo="${esc(u.usuario)}">${esc(u.correo || 'Agregar')}</button></td>
+      <td>${u.activo !== 'SI' ? 'Desactivado' : u.bloqueado ? 'Bloqueado' : u.conClave ? 'Con clave' : 'Sin clave'}</td>
+      <td>${esc(u.ultimoAcceso || '—')}</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn sec" type="button" data-clave="${esc(u.usuario)}">${u.conClave ? 'Nueva clave' : 'Generar clave'}</button>
+        <button class="btn sec" type="button" data-activo="${esc(u.usuario)}">${u.activo === 'SI' ? 'Desactivar' : 'Activar'}</button>
+      </td></tr>`).join('') || '<tr><td colspan="7">Sin usuarios. Use "Crear usuarios que falten".</td></tr>';
+}
+
+$('#usFiltro').addEventListener('input', pintarUsuarios);
+$('#btnUsClaves').addEventListener('click', async () => {
+  if (!confirm('Se generará una clave para cada usuario que aún no tiene. La lista se descarga una sola vez: guárdela en un lugar seguro y no la comparta por grupos. ¿Continuar?')) return;
+  try {
+    const lista = await llamar('usuariosGenerarClavesFaltantes');
+    if (!lista.length) return msgUsuarios('Todos los usuarios activos ya tienen clave.');
+    const csv = '﻿USUARIO,ROL,NOMBRE,CLAVE\n' + lista.map(u => [u.usuario, u.rol, u.nombre, u.clave]
+      .map(x => '"' + String(x).replace(/"/g, '""') + '"').join(',')).join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    a.download = 'claves_censia_' + hoyLocalISO() + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    msgUsuarios(lista.length + ' clave(s) generada(s); se descargó la lista. Entregue a cada unidad solo la suya.');
+    cargarUsuarios();
+  } catch (e) { msgUsuarios(esc(e.message), true); }
+});
+$('#btnUsCoord').addEventListener('click', async () => {
+  try {
+    const r = await llamar('unidadesFijarCoordinaciones', $('#usCoord').value);
+    msgUsuarios(`Coordinación guardada en ${r.fijadas} unidad(es) del catálogo (${r.recibidas} renglones recibidos).`);
+  } catch (e) { msgUsuarios(esc(e.message), true); }
+});
+$('#btnUsCrear').addEventListener('click', async () => {
+  try {
+    const r = await llamar('usuariosCrearDesdeCatalogo');
+    msgUsuarios(r.creados + ' usuario(s) creado(s), todavía sin clave.');
+    cargarUsuarios();
+  } catch (e) { msgUsuarios(esc(e.message), true); }
+});
+$('#usTabla').addEventListener('click', async e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  try {
+    if (b.dataset.clave) {
+      const u = USUARIOS.find(x => x.usuario === b.dataset.clave);
+      if (u.conClave && !confirm('La clave actual de ' + u.usuario + ' dejará de funcionar. ¿Generar una nueva?')) return;
+      const r = await llamar('usuarioGenerarClave', b.dataset.clave);
+      msgUsuarios(`Usuario <b>${esc(r.usuario)}</b> · clave <span class="clave-nueva">${esc(r.clave)}</span><br>Anótela ahora: no se vuelve a mostrar.`);
+    } else if (b.dataset.activo) {
+      const u = USUARIOS.find(x => x.usuario === b.dataset.activo);
+      await llamar('usuarioActualizar', u.usuario, { activo: u.activo === 'SI' ? 'NO' : 'SI' });
+    } else if (b.dataset.correo) {
+      const u = USUARIOS.find(x => x.usuario === b.dataset.correo);
+      const correo = prompt('Correo para avisos de ' + u.usuario + ' (vacío para quitarlo):', u.correo || '');
+      if (correo === null) return;
+      await llamar('usuarioActualizar', u.usuario, { correo });
+    }
+    cargarUsuarios();
+  } catch (err) { msgUsuarios(esc(err.message), true); }
+});
 
 /* Librerías incluidas en el proyecto y cargadas solo al usarlas: una CDN lenta o bloqueada
  * (jsdelivr tardaba ~26 s) detenía toda la app, sobre todo en celulares. */
@@ -1361,14 +2007,18 @@ function hoyLocalISO() {
 function cambiarOrigen(row, origen) {
   const previa = origen === 'PREVIA';
   row.classList.toggle('previa', previa);
-  row.querySelector('.fu').hidden = !previa;
-  row.querySelector('.lp').hidden = !previa;
+  row.querySelector('.o').value = origen;
+  row.querySelector('.origen').hidden = !previa;
   row.querySelector('.combo').hidden = previa;
   row.querySelector('.cad').hidden = previa;
   if (previa) {
     if (!row.querySelector('.m').checked) marcarDosis(row, true);
     // La fecha general es la de hoy: una dosis previa necesita su fecha real.
     if (!row.dataset.propia) row.querySelector('.f').value = '';
+  } else {
+    row.querySelector('.fu').value = '';
+    fijarPrevio(row, '.lp', '.lpNc', '');
+    fijarPrevio(row, '.cp', '.cpNc', '');
   }
   pintarEsquema();
 }
@@ -1406,6 +2056,44 @@ function marcarDosis(row, marcada) {
   }
 }
 
+const NO_CONSTA = 'NO CONSTA';
+let modoDosis = 'APLICADA';
+
+function fijarPrevio(row, campo, nc, valor) {
+  const sinDato = valor === NO_CONSTA;
+  row.querySelector(campo).value = sinDato ? '' : (valor || '');
+  row.querySelector(campo).disabled = sinDato;
+  row.querySelector(nc).checked = sinDato;
+}
+
+function datoPrevio(row, campo, nc) {
+  return row.querySelector(nc).checked ? NO_CONSTA : row.querySelector(campo).value.trim();
+}
+
+/** Cada pestaña muestra las dosis libres y las marcadas en ella; una dosis marcada no sale en la otra. */
+function pintarModo() {
+  const cuenta = { APLICADA: 0, PREVIA: 0 };
+  $('#vacunas').dataset.modo = modoDosis;
+  document.querySelectorAll('.dosis').forEach(row => {
+    const marcada = row.querySelector('.m').checked;
+    const origen = row.querySelector('.o').value;
+    if (marcada) cuenta[origen]++;
+    row.hidden = marcada && origen !== modoDosis;
+  });
+  document.querySelectorAll('#vacunas details.vac').forEach(d => {
+    d.hidden = ![...d.querySelectorAll('.dosis')].some(r => !r.hidden);
+  });
+  document.querySelectorAll('#modoDosis button').forEach(b => {
+    const activo = b.dataset.modo === modoDosis;
+    b.classList.toggle('activo', activo);
+    b.setAttribute('aria-pressed', String(activo));
+    $('#cuenta' + b.dataset.modo).textContent = cuenta[b.dataset.modo] ? '(' + cuenta[b.dataset.modo] + ')' : '';
+  });
+  $('#pistaModo').textContent = modoDosis === 'PREVIA'
+    ? 'Dosis que la persona ya tenía: capture fecha, lote y caducidad como vienen en la cartilla. Si no vienen, marque "No consta"; no invente el dato.'
+    : 'Dosis que se aplican en esta unidad.';
+}
+
 function renderVacunas(anexo, previas = []) {
   anexoActual = anexo;
   $('#pistaVac').style.display = 'none';
@@ -1419,10 +2107,13 @@ function renderVacunas(anexo, previas = []) {
           <input type="date" class="f" aria-label="Fecha de ${esc(v.nombre)}, dosis ${esc(d)}" title="Fecha de esta dosis (si no fue la general)" disabled>
           <input class="lote" aria-label="Lote de ${esc(v.nombre)}, dosis ${esc(d)}" autocomplete="off" placeholder="Lote">
           <input class="cad" aria-label="Caducidad de ${esc(v.nombre)}, dosis ${esc(d)}" readonly placeholder="Caducidad">
-          <div class="origen">
-            <select class="o" aria-label="Origen de ${esc(v.nombre)}, dosis ${esc(d)}"><option value="APLICADA">Aplicada aquí</option><option value="PREVIA">Previa (ya la traía)</option></select>
-            <select class="fu" aria-label="Fuente de la dosis previa" hidden><option value="">Fuente de la dosis previa…</option><option>CARTILLA</option><option>OTRA UNIDAD</option><option>REFERIDA</option></select>
-            <input class="lp" aria-label="Lote de la dosis previa (opcional)" placeholder="Lote (opcional)" autocomplete="off" hidden>
+          <select class="o" hidden aria-hidden="true" tabindex="-1"><option value="APLICADA">Aplicada aquí</option><option value="PREVIA">Previa</option></select>
+          <div class="origen" hidden>
+            <label class="mini">Fuente<select class="fu"><option value="">Seleccione…</option><option>CARTILLA</option><option>OTRA UNIDAD</option><option>REFERIDA</option></select></label>
+            <div><label class="mini">Lote de esa dosis<input class="lp" autocomplete="off"></label>
+              <label class="nc"><input type="checkbox" class="lpNc"> No consta</label></div>
+            <div><label class="mini">Caducidad de esa dosis<input type="date" class="cp"></label>
+              <label class="nc"><input type="checkbox" class="cpNc"> No consta</label></div>
           </div>
         </div>`).join('') +
       `</details>`).join('');
@@ -1435,8 +2126,15 @@ function renderVacunas(anexo, previas = []) {
     if (!cache[nombre].length) input.placeholder = 'Sin lotes en catálogo';
     row._c = Combo(input, v => alCambiarLote(row, v));
     row._c.opts(cache[nombre], false);
-    row.querySelector('.m').addEventListener('change', e => marcarDosis(row, e.target.checked));
-    row.querySelector('.o').addEventListener('change', e => cambiarOrigen(row, e.target.value));
+    row.querySelector('.m').addEventListener('change', e => {
+      marcarDosis(row, e.target.checked);
+      cambiarOrigen(row, e.target.checked ? modoDosis : 'APLICADA');
+      pintarModo();
+    });
+    [['.lpNc', '.lp'], ['.cpNc', '.cp']].forEach(([nc, campo]) => row.querySelector(nc).addEventListener('change', e => {
+      row.querySelector(campo).disabled = e.target.checked;
+      if (e.target.checked) row.querySelector(campo).value = '';
+    }));
     row.querySelector('.f').addEventListener('input', () => { row.dataset.propia = '1'; });
   });
 
@@ -1465,12 +2163,18 @@ function renderVacunas(anexo, previas = []) {
     }
     if (p.origen === 'PREVIA') {
       row.querySelector('.o').value = 'PREVIA';
-      row.querySelector('.fu').value = p.fuente || '';
-      row.querySelector('.lp').value = p.lote || '';
+      const fuente = row.querySelector('.fu');
+      // Fuente "OTRA UNIDAD <CLUES>" de un expediente traído: no está en la lista fija.
+      if (p.fuente && ![...fuente.options].some(o => o.value === p.fuente)) fuente.add(new Option(p.fuente, p.fuente));
+      fuente.value = p.fuente || '';
+      fijarPrevio(row, '.lp', '.lpNc', p.lote);
+      fijarPrevio(row, '.cp', '.cpNc', p.caducidad);
       cambiarOrigen(row, 'PREVIA');
     }
     if (p.fecha) row.closest('details').open = true;
   });
+  $('#modoDosis').hidden = false;
+  pintarModo();
   pintarEsquema();
   $('#vacunasConservadas').textContent = vacunasNoVisibles.length
     ? vacunasNoVisibles.length + ' dosis previa(s) de otros esquemas se conservarán al guardar.' : '';
@@ -1485,8 +2189,8 @@ function leerVacunas() {
         vacuna: r.dataset.vac,
         dosis: r.dataset.dosis,
         fecha: r.querySelector('.f').value,
-        lote: previa ? r.querySelector('.lp').value.trim().toUpperCase() : (r.dataset.lote || ''),
-        caducidad: previa ? '' : r.querySelector('.cad').value.trim(),
+        lote: previa ? datoPrevio(r, '.lp', '.lpNc').toUpperCase() : (r.dataset.lote || ''),
+        caducidad: previa ? datoPrevio(r, '.cp', '.cpNc') : r.querySelector('.cad').value.trim(),
         biologico: previa ? '' : (r.dataset.bio || ''),
         origen: previa ? 'PREVIA' : 'APLICADA',
         fuente: previa ? r.querySelector('.fu').value : ''
@@ -1627,9 +2331,9 @@ async function abrir(folio) {
 }
 
 async function cargarDosisPendientes() {
-  const clues = CB.clues.valor;
+  const clues = CB.clues.valor || CBI.impClues.valor;
   const m = $('#pendMsg'), cont = $('#pendientes'), btn = $('#btnPendientes');
-  if (!clues) { m.className = 'msg err'; m.textContent = 'Seleccione su unidad en la pestaña Captura'; return; }
+  if (!clues) { m.className = 'msg err'; m.textContent = 'Seleccione la unidad en la pestaña Imprimir anexos'; return; }
   btn.disabled = true;
   m.className = 'msg';
   try {
@@ -1663,7 +2367,7 @@ async function buscar() {
         <td>${esc(r.curp)}</td>
         <td>${esc(r.anexo)}</td>
         <td>${esc(r.edad)}</td>
-        <td><select onchange="cambiarEstatus('${esc(r.folio)}', this.value)">
+        <td><select onchange="cambiarEstatus('${esc(r.folio)}', this.value)" ${SESION && SESION.captura ? '' : 'disabled'}>
           ${CAT.estatus.map(s => `<option ${s === r.estatus ? 'selected' : ''}>${s}</option>`).join('')}
         </select></td>
         <td><button class="btn sec" onclick="abrir('${esc(r.folio)}')">Abrir</button></td>
@@ -1871,11 +2575,13 @@ function pintarReportesEsavi(r) {
         <td><select class="es-estatus">${opciones(r.estatus, e.estatus)}</select></td>
         <td><input class="es-folio" value="${esc(e.folioDGE)}" size="10"></td>
         <td><select class="es-dictamen"><option value=""></option>${opciones(r.dictamenes, e.dictamen)}</select></td>
-        <td><button class="btn sec es-guardar" type="button">Guardar</button> <a class="btn sec" href="${correoEsavi(e)}">Avisar por correo</a></td>
+        <td><button class="btn sec es-guardar" type="button">Guardar</button> <a class="btn sec" href="${correoEsavi(e)}">Avisar por correo</a>
+          <button class="btn sec es-estudio" type="button">Estudio${e.estudio ? ' (' + esc(e.estudio) + ')' : ''}</button></td>
       </tr>`).join('')}</tbody></table>`
     : '<p class="hint">Sin reportes de ESAVI.</p>';
   cont.querySelectorAll('tr[data-i]').forEach(tr => {
     const e = r.reportes[+tr.dataset.i];
+    tr.querySelector('.es-estudio').onclick = () => abrirEstudio(e.id);
     tr.querySelector('.es-guardar').onclick = async () => {
       const estatus = tr.querySelector('.es-estatus').value;
       const cambios = { estatus, folioDGE: tr.querySelector('.es-folio').value.trim(), dictamen: tr.querySelector('.es-dictamen').value };
@@ -1890,6 +2596,210 @@ function pintarReportesEsavi(r) {
     };
   });
 }
+
+/* ---------- Alertas de ESAVI (servidor: Alertas.js) ---------- */
+async function cargarAlertas() {
+  if (!SESION || SESION.rol === 'UNIDAD') return;
+  try {
+    const r = await llamar('alertasListar');
+    const c = $('#cuentaAlertas');
+    c.hidden = !r.pendientes;
+    c.textContent = r.pendientes;
+    $('#alertasTabla').innerHTML = r.alertas.length
+      ? `<table><thead><tr><th>Estado</th><th>Reporte</th><th>Unidad</th><th>Molestias</th><th>Notificar a DGE antes de</th><th>Atención</th></tr></thead><tbody>${
+        r.alertas.map(a => `<tr>
+          <td>${a.grave === 'SI' ? '<b class="txt-err">GRAVE</b>' : 'No grave'}<br><small>${esc(a.origen)}</small></td>
+          <td>${esc(a.id)}<br><small>${esc(a.fecha)} · ${esc(a.folio)}</small></td>
+          <td>${esc(a.unidad)}<br><small>${esc(a.clues)}</small></td>
+          <td>${esc(a.sintomas)}</td>
+          <td class="${a.vencido ? 'txt-err' : ''}">${esc(a.limite)}${a.vencido ? '<br><b>VENCIDO</b>' : ''}</td>
+          <td>${a.estado === 'PENDIENTE'
+            ? `<button class="btn sec" type="button" data-alerta="${esc(a.id)}">Atender</button>`
+            : `${esc(a.atendio)} · ${esc(a.fechaAtencion)}<br><small>${esc(a.nota)}</small>`}</td>
+        </tr>`).join('')}</tbody></table>`
+      : '<p class="hint" style="padding:16px">Sin alertas.</p>';
+  } catch (e) { if (!e.sesion) msgEsavi(e.message, true); }
+}
+
+$('#alertasTabla').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-alerta]');
+  if (!b) return;
+  const nota = prompt('¿Qué se hizo con la alerta ' + b.dataset.alerta + '?');
+  if (nota === null) return;
+  try {
+    await llamar('alertaAtender', b.dataset.alerta, nota);
+    msgEsavi('Alerta atendida');
+    cargarAlertas();
+  } catch (err) { msgEsavi(err.message, true); }
+});
+
+/* ---------- Estudio epidemiológico de ESAVI (servidor: EstudioEsavi.js) ---------- */
+let ESTUDIO = null;
+const ROL_ESTUDIO = { UNIDAD: 'BORRADOR', JURISDICCION: 'ELABORADO', REGION: 'REVISADO' };
+const SIGUIENTE_ESTUDIO = { UNIDAD: ['ELABORADO', 'Marcar elaborado'], JURISDICCION: ['REVISADO', 'Marcar revisado'], REGION: ['VALIDADO', 'Marcar validado'] };
+const PASO_ESTUDIO = { BORRADOR: 'UNIDAD', ELABORADO: 'JURISDICCION', REVISADO: 'REGION' };
+// Con acceso general se avanza cada paso desde la misma cuenta.
+const rolEstudio = estado => (SESION.rol === 'UNIVERSAL' ? PASO_ESTUDIO[estado] : SESION.rol);
+
+function msgEstudio(texto, error = false) {
+  const m = $('#estudioMsg');
+  m.textContent = texto;
+  m.className = 'msg ' + (error ? 'err' : 'ok');
+}
+
+function campoEstudio(c, v) {
+  const valor = v[c.col] || '';
+  const etiqueta = esc(c.etiqueta);
+  if (c.tipo === 'marca') {
+    return `<label class="est-marca"><input type="checkbox" data-col="${c.col}" ${valor ? 'checked' : ''}> ${etiqueta}</label>`;
+  }
+  const id = 'est' + c.col;
+  let control;
+  if (c.tipo === 'lista') {
+    control = `<select id="${id}" data-col="${c.col}"><option value=""></option>${c.opciones
+      .map(([x, t]) => `<option value="${esc(x)}" ${x === valor ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>`;
+  } else if (c.tipo === 'fecha') {
+    control = `<input type="date" id="${id}" data-col="${c.col}" value="${esc(valor)}">`;
+  } else if (c.col === 217 || c.col === 218 || c.col === 250) {
+    control = `<textarea id="${id}" data-col="${c.col}">${esc(valor)}</textarea>`;
+  } else {
+    control = `<input id="${id}" data-col="${c.col}" value="${esc(valor)}" autocomplete="off" ${c.tipo === 'num' ? 'inputmode="numeric"' : ''}>`;
+  }
+  return `<div class="campo"><label for="${id}">${etiqueta}</label>${control}</div>`;
+}
+
+function leerEstudio() {
+  const v = {};
+  document.querySelectorAll('#estudioForm [data-col]').forEach(el => {
+    const x = el.type === 'checkbox' ? (el.checked ? '1' : '') : el.value.trim();
+    if (x) v[el.dataset.col] = x;
+  });
+  return v;
+}
+
+function pintarEstudio() {
+  const e = ESTUDIO;
+  $('#estudioTitulo').textContent = `Estudio ${e.id} · ${e.folio} · ${e.estado}`;
+  const grave = e.valores[221] === '1';
+  $('#estudioForm').innerHTML = EstudioESAVI.SECCIONES.map(s => `<details class="vac" ${s.grave && !grave ? '' : 'open'}><summary>${esc(s.titulo)}</summary>
+      <div class="${s.signos ? 'est-signos' : 'grid'}">${s.campos.map(c => campoEstudio(c, e.valores)).join('')}</div></details>`).join('');
+  $('#estudioFaltan').textContent = e.faltantes.length ? 'Falta para marcar elaborado: ' + e.faltantes.join(', ') : '';
+  const rol = rolEstudio(e.estado);
+  const edita = ROL_ESTUDIO[rol] === e.estado;
+  $('#estudioForm').querySelectorAll('input,select,textarea').forEach(x => { x.disabled = !edita; });
+  const sig = SIGUIENTE_ESTUDIO[rol];
+  const devolver = ['JURISDICCION', 'REGION'].includes(rol) && ['ELABORADO', 'REVISADO'].includes(e.estado);
+  $('#estudioAcciones').innerHTML = (edita ? '<button class="btn" type="button" id="estGuardar">Guardar estudio</button>' : '') +
+    (edita && sig ? `<button class="btn sec" type="button" id="estAvanzar">${esc(sig[1])}</button>` : '') +
+    (devolver ? '<button class="btn sec" type="button" id="estDevolver">Devolver a la unidad</button>' : '') +
+    '<button class="btn sec" type="button" id="estCopiar">Copiar fila para la máscara</button>' +
+    '<button class="btn sec" type="button" id="estPdf">Descargar PDF del formato</button>' +
+    '<button class="btn sec" type="button" id="estCerrar">Cerrar</button>';
+  const al = (id, fn) => { const b = $('#' + id); if (b) b.onclick = fn; };
+  al('estGuardar', () => guardarEstudio());
+  al('estAvanzar', () => avanzarEstudio(sig[0]));
+  al('estDevolver', () => cambiarEstudio('BORRADOR'));
+  al('estCopiar', copiarFilaEstudio);
+  al('estPdf', descargarEstudioPdf);
+  al('estCerrar', () => { $('#estudioPanel').hidden = true; });
+}
+
+async function abrirEstudio(id) {
+  try {
+    ESTUDIO = await llamar('estudioAbrir', id);
+    $('#estudioMsg').className = 'msg';
+    $('#estudioPanel').hidden = false;
+    pintarEstudio();
+    $('#estudioPanel').scrollIntoView({ behavior: 'smooth' });
+  } catch (e) { msgEsavi(e.message, true); }
+}
+
+async function guardarEstudio() {
+  try {
+    ESTUDIO.valores = leerEstudio();
+    const r = await llamar('estudioGuardar', ESTUDIO.id, ESTUDIO.valores);
+    ESTUDIO.faltantes = r.faltantes;
+    $('#estudioFaltan').textContent = r.faltantes.length ? 'Falta para marcar elaborado: ' + r.faltantes.join(', ') : '';
+    msgEstudio('Estudio guardado');
+    return true;
+  } catch (e) { msgEstudio(e.message, true); return false; }
+}
+
+async function cambiarEstudio(estado) {
+  try {
+    await llamar('estudioCambiarEstado', ESTUDIO.id, estado);
+    await abrirEstudio(ESTUDIO.id);
+    msgEstudio('Estudio en estado ' + estado);
+    cargarEsavi();
+  } catch (e) { msgEstudio(e.message, true); }
+}
+
+async function avanzarEstudio(estado) {
+  if (await guardarEstudio()) cambiarEstudio(estado);
+}
+
+async function copiarTexto(texto) {
+  try {
+    await navigator.clipboard.writeText(texto);
+  } catch (e) {  // sin permiso de portapapeles
+    const t = document.createElement('textarea');
+    t.value = texto;
+    document.body.appendChild(t);
+    t.select();
+    document.execCommand('copy');
+    t.remove();
+  }
+}
+
+async function copiarFilaEstudio() {
+  try {
+    const edita = ROL_ESTUDIO[rolEstudio(ESTUDIO.estado)] === ESTUDIO.estado;
+    if (edita && !await guardarEstudio()) return;
+    const r = await llamar('estudioFilas', { id: ESTUDIO.id });
+    await copiarTexto(r.texto);
+    msgEstudio('Fila copiada: péguela en la primera fila vacía de "Base de Datos" (columna A).');
+  } catch (e) { msgEstudio(e.message, true); }
+}
+
+let RECURSOS_ESTUDIO = null;
+
+async function descargarEstudioPdf() {
+  const btn = $('#estPdf');
+  btn.disabled = true;
+  try {
+    const edita = ROL_ESTUDIO[rolEstudio(ESTUDIO.estado)] === ESTUDIO.estado;
+    if (edita && !await guardarEstudio()) return;
+    const [rec] = await Promise.all([
+      RECURSOS_ESTUDIO || llamar('recursosEstudio').then(r => (RECURSOS_ESTUDIO = r)),
+      cargarLibreria('pdflib'), cargarLibreria('fontkit')
+    ]);
+    const bytes = b64 => Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const r = await LlenadoESAVI.llenarEstudio({
+      PDFLib, mapa: rec.mapa, fondo: bytes(rec.fondo), valores: ESTUDIO.valores, letra: bytes(rec.letra), fontkit: window.fontkit
+    });
+    const url = URL.createObjectURL(new Blob([r.pdf], { type: 'application/pdf' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Estudio_' + ESTUDIO.id + '.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    msgEstudio('PDF descargado.' + (r.avisos.length ? ' Revise: ' + r.avisos.join('; ') : ''));
+  } catch (e) {
+    msgEstudio(e.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+$('#btnEstFilas').addEventListener('click', async () => {
+  try {
+    const r = await llamar('estudioFilas', { desde: $('#estDesde').value, hasta: $('#estHasta').value });
+    if (!r.total) return msgEsavi('No hay estudios elaborados en ese periodo', true);
+    await copiarTexto(r.texto);
+    msgEsavi(r.total + ' fila(s) copiadas: péguelas en la primera fila vacía de "Base de Datos" (columna A).');
+  } catch (e) { msgEsavi(e.message, true); }
+});
 
 async function registrarEsaviUnidad() {
   const marcados = clase => [...document.querySelectorAll('.' + clase + ':checked')].map(x => x.value);
@@ -1924,7 +2834,8 @@ function activarTab(nombre) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('activo', t.id === nombre));
   if (nombre === 'seguimiento') buscar();
   if (nombre === 'resumen') cargarResumen();
-  if (nombre === 'esavi') cargarEsavi();
+  if (nombre === 'esavi') { cargarEsavi(); cargarAlertas(); }
+  if (nombre === 'usuarios') cargarUsuarios();
   if (nombre === 'imprimir') {  // se adelantan las librerías del PDF mientras se eligen los filtros
     cargarLibreria('pdflib').catch(() => {});
     cargarLibreria('fontkit').catch(() => {});
@@ -2112,6 +3023,13 @@ frm.cp.addEventListener('input', alCambiarCP);
 }));
 ['embarazada', 'fum', 'sexo'].forEach(n => frm.elements[n].addEventListener('change', pintarEsquema));
 
+$('#modoDosis').addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  modoDosis = b.dataset.modo;
+  pintarModo();
+});
+
 $('#fechaAplicacion').addEventListener('change', e => {
   document.querySelectorAll('.dosis').forEach(row => {
     if (row.querySelector('.m').checked && !row.dataset.propia &&
@@ -2185,7 +3103,15 @@ frm.elements.sexo.addEventListener('change', () => { aplicarReglas(); validarEnV
 frm.embarazada.addEventListener('change', refrescarPersona);
 $('#q').addEventListener('keydown', e => { if (e.key === 'Enter') buscar(); });
 
-(async () => {
+async function arrancar() {
+  if (!SESION) {
+    // Acceso abierto (Acceso.js): sin usuario ni clave; la sesión no se guarda.
+    try {
+      const m = await llamar('modoAcceso');
+      if (m.abierto) SESION = Object.assign({ ficha: '' }, m.sesion);
+    } catch (e) { /* servidor sin modo abierto */ }
+  }
+  if (!SESION) return pedirEntrada();
   try {
     CAT = await llamar('getCatalogos');
     $('#selEstatus').innerHTML = CAT.estatus.map(s => `<option>${s}</option>`).join('');
@@ -2194,6 +3120,7 @@ $('#q').addEventListener('keydown', e => { if (e.key === 'Enter') buscar(); });
     if (guardada && CAT.unidades.some(r => r.clues === guardada)) CB.clues.fijar(guardada, true);
     actualizarTodo();
     refrescarPersona();
+    aplicarPerfil();
     document.body.dataset.ready = 'true';
     setTimeout(() => cargarLibreria('jsqr').catch(() => {}), 1500);  // lector QR listo en segundo plano
     $('#estadoCatalogos').textContent = 'Catálogos disponibles';
@@ -2202,7 +3129,8 @@ $('#q').addEventListener('keydown', e => { if (e.key === 'Enter') buscar(); });
     $('#estadoCatalogos').textContent = 'No se pudieron cargar los catálogos';
     msg('Error al cargar catálogos: ' + e.message, true);
   }
-})();
+}
+arrancar();
 </script>
 </body>
 </html>
