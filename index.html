@@ -454,6 +454,10 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
       'TD|3A': 'TD|3a',
       'TD|REFUERZO': 'TD|REFUERZO',
       'VPH|UNICA': columnaVPH,
+      // Nota del formato 2026: en 1-B y 1-C es una dosis anual con una sola columna, "FECHA (REFUERZO)";
+      // la 1a o 2a capturadas son esa dosis anual.
+      'COVID-19|1A': 'COVID-19|REFUERZO',
+      'COVID-19|2A': 'COVID-19|REFUERZO',
       'COVID-19|REFUERZO': 'COVID-19|REFUERZO',
     },
     '1-C': {
@@ -477,6 +481,10 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
       'VPH HOMBRES CIS Y TRANS CON VIH|1A': 'VPH HOMBRES VIH|1a',
       'VPH HOMBRES CIS Y TRANS CON VIH|2A': 'VPH HOMBRES VIH|2a',
       'VPH HOMBRES CIS Y TRANS CON VIH|3A': 'VPH HOMBRES VIH|3a',
+      // Nota del formato 2026: en 1-B y 1-C es una dosis anual con una sola columna, "FECHA (REFUERZO)";
+      // la 1a o 2a capturadas son esa dosis anual.
+      'COVID-19|1A': 'COVID-19|REFUERZO',
+      'COVID-19|2A': 'COVID-19|REFUERZO',
       'COVID-19|REFUERZO': 'COVID-19|REFUERZO',
     },
   };
@@ -516,6 +524,8 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
 
   const texto = v => String(v == null ? '' : v).trim().toUpperCase();
   const marca = condicion => (condicion ? 'X' : '');
+  const NO_CONSTA = 'NO CONSTA';  // dosis previa sin el dato en la cartilla; la casilla es angosta
+  const dato = t => (t === NO_CONSTA ? 'N/C' : t);
 
   /** Valores (texto) por campo del formato para una persona, más sus vacunas y avisos. */
   function filaPersona(r, { anexo, referencia, equivalencias, clavesVacunas }) {
@@ -547,6 +557,7 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
     CAMPOS[anexo].forEach(k => { campos[k] = todos[k]; });
 
     const vacunas = {};
+    const usadas = {};
     const avisos = [];
     (r.vacunas || []).forEach(v => {
       // Tabla fija {"vacuna|dosis": clave} o función (registro, vacuna) → clave | null.
@@ -555,7 +566,16 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
         avisos.push(`${r.folio}: ${v.vacuna} (${v.dosis}) no tiene columna en el Anexo ${anexo}`);
         return;
       }
-      vacunas[clave] = { fecha: C.fechaCorta(v.fecha), lote: texto(v.lote), caducidad: C.fechaCorta(v.caducidad) };
+      // Dos dosis en la misma columna (p. ej. COVID anual en 1-B/1-C): se imprime la más reciente.
+      const previa = usadas[clave];
+      if (previa) {
+        avisos.push(`${r.folio}: ${v.vacuna} tiene más de una dosis para la misma columna del Anexo ${anexo}; se imprime la más reciente`);
+        if (String(v.fecha) < String(previa.fecha)) return;
+      }
+      usadas[clave] = v;
+      vacunas[clave] = {
+        fecha: C.fechaCorta(v.fecha), lote: dato(texto(v.lote)), caducidad: dato(C.fechaCorta(v.caducidad)),
+      };
     });
     return { campos, vacunas, avisos };
   }
