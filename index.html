@@ -452,6 +452,9 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
       .etq-contacto { display:inline-block; font-size:12px; font-weight:600; padding:2px 8px; border-radius:10px; background:#e6efec; color:#0C6454; white-space:nowrap; }
       .etq-contacto.LLAMAR { background:#fdecea; color:#b71c1c; }
       .etq-contacto.SIN { background:#fff4e5; color:#8a4b00; }
+      .etq-plazo { display:inline-block; font-size:12px; font-weight:600; padding:2px 8px; border-radius:10px; white-space:nowrap; background:#e6efec; color:#0C6454; }
+      .etq-plazo.alerta { background:#fff4e5; color:#8a4b00; } .etq-plazo.mal { background:#fdecea; color:#b71c1c; }
+      .es-plazos { font-size:12px; line-height:1.5; min-width:190px; } .es-plazos input { font-size:12px; max-width:190px; }
     </style>
     <div class="page-heading"><div><p class="eyebrow">VIGILANCIA POSTVACUNACIÓN</p><h2 id="heading-esavi" tabindex="-1">Seguimiento de ESAVI</h2><p class="description">Contacta por WhatsApp a quienes aceptaron seguimiento, registra eventos y controla los plazos para notificar a la DGE (graves y COVID-19: 24 h; no graves: 48 h).</p></div></div>
     <div class="filtros">
@@ -486,7 +489,9 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
         <div class="campo ancho">Descripción <textarea id="esDesc"></textarea></div>
       </div>
       <p class="hint">Molestias</p><div id="esSintomas" class="opciones-check"></div>
-      <p class="hint">Criterios de gravedad (cualquiera = ESAVI grave: notificar en 24 h)</p><div id="esCriterios" class="opciones-check"></div>
+      <p class="hint">Criterios de gravedad (Manual ESAVI 2026 §5.3; cualquiera = ESAVI grave: notificar a epidemiología en 24 h e iniciar la investigación en 24 h). Sin criterio = no grave: notificar en 48 h, máximo 7 días.</p><div id="esCriterios" class="opciones-check"></div>
+      <div class="grid"><div class="campo">¿Hubo error programático? (cap. 12)
+        <select id="esError"><option value="">No / no se sabe</option></select></div></div>
       <p class="hint">Fotos de la molestia (opcional, máximo 2; sin la cara)</p>
       <div class="filtros"><button class="btn sec" type="button" id="btnEsFoto">Agregar foto</button><input type="file" id="esFoto" accept="image/*" hidden></div>
       <div id="esFotos" class="es-fotos"></div>
@@ -3281,6 +3286,7 @@ async function cargarEsavi() {
         `<label><input type="checkbox" class="${clase}" value="${esc(x)}"> ${esc(x)}</label>`).join('');
       $('#esSintomas').innerHTML = casillas(r.sintomas, 'es-s');
       $('#esCriterios').innerHTML = casillas(r.criterios, 'es-c');
+      $('#esError').insertAdjacentHTML('beforeend', (r.erroresProgramaticos || []).map(x => `<option>${esc(x)}</option>`).join(''));
     }
   } catch (e) {
     msgEsavi(e.message, true);
@@ -3358,7 +3364,7 @@ async function enviarWhatsApp(p, boton) {
 function pintarConglomerados(lista) {
   $('#esaviConglomerados').innerHTML = lista.length
     ? lista.map(g => `<p class="msg err" style="display:block">⚠ Conglomerado por ${g.tipo === 'LOTE' ? 'lote' : 'unidad'}
-        <b>${esc(g.clave)}</b>: ${g.ids.length} reportes (${esc(g.ids.join(', '))}). Notificar a la jurisdicción en las primeras 24 h.</p>`).join('')
+        <b>${esc(g.clave)}</b>: ${g.ids.length} reportes (${esc(g.ids.join(', '))}). Notificar a epidemiología jurisdiccional en las primeras 24 h con el formato DGE-CONG-ESAVI y los estudios de cada caso; cerrar en NOTINMED en máximo 31 días.</p>`).join('')
     : '<p class="hint">Sin conglomerados.</p>';
 }
 
@@ -3371,9 +3377,33 @@ function correoEsavi(e) {
     `Vacunas: ${e.vacunas.map(v => `${v.vacuna} (${v.dosis}) lote ${v.lote || 's/l'} aplicada ${v.fecha}`).join('; ')}`,
     `Molestias: ${e.sintomas}${e.criterios ? ' | Criterios de gravedad: ' + e.criterios : ''}`,
     `Inicio: ${e.fechaInicio} · Clasificación: ${e.grave === 'SI' ? 'GRAVE' : 'No grave'}${e.covid === 'SI' ? ' (COVID-19)' : ''}`,
-    `Notificar a la DGE antes de: ${e.limite}`
-  ].join('\n');
+    e.grave === 'SI'
+      ? `Notificar a epidemiología jurisdiccional antes de: ${e.limite} (grave: 24 h). Iniciar la investigación en 24 h.`
+      : `Notificar a epidemiología jurisdiccional: oportuna antes de ${e.limite}, máximo ${e.notificacion ? e.notificacion.maximo : e.limite} (7 días).`,
+    e.errorProgramatico ? `Error programático (${e.errorProgramatico}): avisar al superior en 24 h y a la jurisdicción en 72 h.` : ''
+  ].filter(Boolean).join('\n');
   return 'mailto:?subject=' + encodeURIComponent(asunto) + '&body=' + encodeURIComponent(cuerpo);
+}
+
+/* Plazos del Manual ESAVI 2026 (motor/esavi.js: estadoNotificacion y estadoInvestigacion). */
+const CLASE_PLAZO = { OPORTUNA: '', 'EN PLAZO': '', 'NO OPORTUNA': 'alerta', 'FUERA DE OPORTUNIDAD': 'alerta', VENCIDA: 'mal',
+  'POR INICIAR': 'alerta', 'INICIO VENCIDO': 'mal', 'EN CURSO': '', 'CIERRE VENCIDO': 'mal', CERRADA: '' };
+const etqPlazo = estado => `<span class="etq-plazo ${CLASE_PLAZO[estado] || ''}">${esc(estado)}</span>`;
+const aLocal = f => String(f || '').slice(0, 16).replace(' ', 'T');
+
+function celdaPlazosEsavi(e) {
+  const n = e.notificacion || { estado: '', limite: e.limite, maximo: e.limite };
+  const plazo = e.grave === 'SI' ? `Antes de ${esc(n.limite)} (24 h)`
+    : `Oportuna: ${esc(n.limite)}<br>Máximo: ${esc(n.maximo)} (7 días)`;
+  let html = `${etqPlazo(n.estado)}<br>${plazo}
+    <label class="hint" style="display:block">Se notificó el <input type="datetime-local" class="es-notif" value="${esc(aLocal(e.fechaNotifJuris))}" max="${esc(aLocal(ahoraLocal()))}"></label>`;
+  const inv = e.investigacion;
+  if (inv) {
+    html += `<div style="margin-top:6px"><b>Investigación</b> ${etqPlazo(inv.estado)}<br>
+      Iniciar antes de ${esc(inv.limiteInicio)}${inv.limiteCierre ? `<br>Cerrar antes de ${esc(inv.limiteCierre)} (3 meses)` : ''}
+      <label class="hint" style="display:block">Inicio <input type="datetime-local" class="es-invest" value="${esc(aLocal(e.inicioInvestigacion))}" max="${esc(aLocal(ahoraLocal()))}"></label></div>`;
+  }
+  return html;
 }
 
 function pintarReportesEsavi(r) {
@@ -3381,14 +3411,17 @@ function pintarReportesEsavi(r) {
   const cont = $('#esaviReportes');
   cont.innerHTML = r.reportes.length
     ? `<table><thead><tr><th>Reporte</th><th>Persona</th><th>Vacunas y lote</th><th>Molestias</th><th>Clasificación</th>
-        <th>Notificar a DGE antes de</th><th>Estatus</th><th>Folio DGE</th><th>Dictamen</th><th></th></tr></thead><tbody>${
+        <th>Notificación a epidemiología</th><th>Estatus</th><th>Folio DGE</th><th>Dictamen</th><th></th></tr></thead><tbody>${
       r.reportes.map((e, i) => `<tr data-i="${i}">
         <td>${esc(e.id)}<br><small>${esc(e.fechaReporte)} · ${esc(e.fuente)}</small></td>
         <td>${esc(e.nombre)}<br><small>${esc(e.folio)} · ${esc(e.unidad)}</small></td>
         <td>${e.vacunas.map(v => esc(`${v.vacuna} (${v.dosis}) lote ${v.lote || 's/l'} · ${v.fecha}`)).join('<br>')}</td>
         <td>${esc(e.sintomas)}${e.criterios ? '<br><b>' + esc(e.criterios) + '</b>' : ''}<br><small>Inicio ${esc(e.fechaInicio)}</small></td>
-        <td>${e.grave === 'SI' ? '<b class="txt-err">GRAVE</b>' : 'No grave'}${e.covid === 'SI' ? ' · COVID-19' : ''}</td>
-        <td class="${e.vencido ? 'txt-err' : ''}">${esc(e.limite)}${e.vencido ? '<br><b>VENCIDO</b>' : ''}</td>
+        <td>${e.grave === 'SI' ? '<b class="txt-err">GRAVE</b>' : 'No grave'}${e.covid === 'SI' ? ' · COVID-19' : ''}
+          <label class="hint" style="display:block;margin-top:6px">Error programático
+            <select class="es-error"><option value="">No</option>${opciones(r.erroresProgramaticos || [], e.errorProgramatico)}</select></label>
+          ${e.plazosError ? `<small>Superior antes de ${esc(e.plazosError.superior)}<br>Jurisdicción antes de ${esc(e.plazosError.jurisdiccion)}</small>` : ''}</td>
+        <td class="es-plazos">${celdaPlazosEsavi(e)}</td>
         <td><select class="es-estatus">${opciones(r.estatus, e.estatus)}</select></td>
         <td><input class="es-folio" value="${esc(e.folioDGE)}" size="10"></td>
         <td><select class="es-dictamen"><option value=""></option>${opciones(r.dictamenes, e.dictamen)}</select></td>
@@ -3404,7 +3437,10 @@ function pintarReportesEsavi(r) {
     if (btnFotos) btnFotos.onclick = () => verFotosEsavi(e.id, tr.nextElementSibling, btnFotos);
     tr.querySelector('.es-guardar').onclick = async () => {
       const estatus = tr.querySelector('.es-estatus').value;
-      const cambios = { estatus, folioDGE: tr.querySelector('.es-folio').value.trim(), dictamen: tr.querySelector('.es-dictamen').value };
+      const cambios = { estatus, folioDGE: tr.querySelector('.es-folio').value.trim(), dictamen: tr.querySelector('.es-dictamen').value,
+        fechaNotifJuris: tr.querySelector('.es-notif').value, errorProgramatico: tr.querySelector('.es-error').value };
+      const inv = tr.querySelector('.es-invest');
+      if (inv) cambios.inicioInvestigacion = inv.value;
       if (estatus === 'NOTIFICADO DGE' && !e.fechaNotifDGE) cambios.fechaNotifDGE = ahoraLocal();
       try {
         await llamar('esaviActualizar', e.id, cambios);
@@ -3472,13 +3508,13 @@ async function cargarAlertas() {
     c.hidden = !r.pendientes;
     c.textContent = r.pendientes;
     $('#alertasTabla').innerHTML = r.alertas.length
-      ? `<table><thead><tr><th>Estado</th><th>Reporte</th><th>Unidad</th><th>Molestias</th><th>Notificar a DGE antes de</th><th>Atención</th></tr></thead><tbody>${
+      ? `<table><thead><tr><th>Estado</th><th>Reporte</th><th>Unidad</th><th>Molestias</th><th>Notificación a epidemiología</th><th>Atención</th></tr></thead><tbody>${
         r.alertas.map(a => `<tr>
           <td>${a.grave === 'SI' ? '<b class="txt-err">GRAVE</b>' : 'No grave'}<br><small>${esc(a.origen)}</small></td>
           <td>${esc(a.id)}<br><small>${esc(a.fecha)} · ${esc(a.folio)}</small></td>
           <td>${esc(a.unidad)}<br><small>${esc(a.clues)}</small></td>
           <td>${esc(a.sintomas)}</td>
-          <td class="${a.vencido ? 'txt-err' : ''}">${esc(a.limite)}${a.vencido ? '<br><b>VENCIDO</b>' : ''}</td>
+          <td>${a.plazo ? etqPlazo(a.plazo) + '<br>' : ''}${a.grave === 'SI' ? 'Antes de ' + esc(a.limite) : 'Oportuna: ' + esc(a.limite) + (a.maximo ? '<br>Máximo: ' + esc(a.maximo) : '')}</td>
           <td>${a.estado === 'PENDIENTE'
             ? `<button class="btn sec" type="button" data-alerta="${esc(a.id)}">Atender</button>`
             : `${esc(a.atendio)} · ${esc(a.fechaAtencion)}<br><small>${esc(a.nota)}</small>`}</td>
@@ -3676,14 +3712,17 @@ async function registrarEsaviUnidad() {
   try {
     const r = await llamar('esaviRegistrarUnidad', folio, {
       sintomas: marcados('es-s'), criterios: marcados('es-c'), fechaInicio: $('#esInicio').value,
-      telefono: $('#esTel').value, descripcion: $('#esDesc').value,
+      telefono: $('#esTel').value, descripcion: $('#esDesc').value, errorProgramatico: $('#esError').value,
       fotos: ES_FOTOS.map(f => ({ tipo: f.tipo, datos: f.datos }))
     });
     const avisoFotos = ES_FOTOS.length && !r.fotos ? ' Las fotos no se pudieron guardar.' : '';
-    msgEsavi(`ESAVI ${r.id} registrado${r.grave ? ' como GRAVE' : ''}. Notificar a la DGE antes de ${r.limite}.${avisoFotos}`, !!avisoFotos);
+    const plazo = r.grave ? `Notificar a epidemiología antes de ${r.limite} e iniciar la investigación en 24 h`
+      : `Notificar a epidemiología antes de ${r.limite} (oportuna; máximo ${r.limiteMaximo})`;
+    const error = r.errorProgramatico ? ' Error programático: avisar al superior en 24 h y a la jurisdicción en 72 h.' : '';
+    msgEsavi(`ESAVI ${r.id} registrado${r.grave ? ' como GRAVE' : ''}. ${plazo}.${error}${avisoFotos}`, !!avisoFotos);
     ES_FOTOS.length = 0;
     pintarFotosUnidad();
-    ['#esFolio', '#esInicio', '#esTel', '#esDesc'].forEach(s => { $(s).value = ''; });
+    ['#esFolio', '#esInicio', '#esTel', '#esDesc', '#esError'].forEach(s => { $(s).value = ''; });
     document.querySelectorAll('.es-s, .es-c').forEach(x => { x.checked = false; });
     cargarEsavi();
   } catch (e) {
