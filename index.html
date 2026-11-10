@@ -73,16 +73,7 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
       <button class="btn sec" type="button" onclick="nuevo()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/><rect x="3" y="3" width="18" height="18" rx="4"/></svg>Nuevo registro</button>
     </div>
 
-    <details class="vac" id="buscaCurp">
-      <summary>Buscar CURP en otras unidades</summary>
-      <p class="hint">Escriba la CURP completa para saber si la persona ya está registrada en otra unidad. Cada consulta queda registrada; límite de 30 al día.</p>
-      <div class="filtros">
-        <input id="bcCurp" maxlength="18" autocomplete="off" spellcheck="false" aria-label="CURP completa" placeholder="CURP de 18 caracteres">
-        <button class="btn sec" type="button" id="btnBuscarCurp">Buscar</button>
-      </div>
-      <div id="bcResultado" role="status" aria-live="polite"></div>
-    </details>
-    <form id="frm" onsubmit="return guardar(event)">
+    <form id="frm" data-vista="expediente" onsubmit="return guardar(event)">
 
       <fieldset>
         <legend>Unidad de aplicación (se recuerda en este equipo)</legend>
@@ -100,7 +91,54 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
         </details>
       </fieldset>
 
-      <fieldset>
+      <fieldset id="fsBuscar">
+        <legend>Buscar persona</legend>
+        <p class="hint">Busque por CURP (escrita o con el lector) o por nombre y fecha de nacimiento. Si la persona se registró sola en la página del paciente, aquí aparece.</p>
+        <div class="grid">
+          <div class="campo">CURP <input id="bxCurp" maxlength="18" autocomplete="off" spellcheck="false" placeholder="18 caracteres"></div>
+          <div class="campo">Nombre y apellidos <input id="bxNombre" autocomplete="off" placeholder="P. ej. ANA PEREZ"></div>
+          <div class="campo">Fecha de nacimiento <input type="date" id="bxNacimiento"></div>
+        </div>
+        <div class="exp-acciones">
+          <button class="btn" type="button" id="btnBuscarPersona">Buscar</button>
+          <button class="btn sec solo-captura" type="button" id="btnPersonaNueva">Registrar persona nueva</button>
+        </div>
+        <div id="resultadosBusqueda" role="status" aria-live="polite"></div>
+      </fieldset>
+
+      <fieldset id="fsExpediente" hidden>
+        <legend>Expediente</legend>
+        <div id="expCabecera"></div>
+        <div class="exp-acciones solo-captura">
+          <button class="btn" type="button" id="btnNuevaDosis">Registrar vacuna aplicada hoy</button>
+          <button class="btn sec" type="button" id="btnNuevaPrevia">Agregar dosis previa (cartilla)</button>
+          <button class="btn sec" type="button" id="btnEditarPersona">Revisar o corregir datos</button>
+        </div>
+        <div class="exp-dosis vac" id="expDosis" hidden>
+          <b id="expDosisTitulo">Vacuna aplicada hoy</b>
+          <div class="grid">
+            <div class="campo">Vacuna <select id="dxVacuna"></select></div>
+            <div class="campo">Dosis <select id="dxDosis"></select></div>
+            <div class="campo">Fecha <input type="date" id="dxFecha"></div>
+            <div class="campo dx-aplicada">Lote <select id="dxLote"></select></div>
+            <div class="campo dx-aplicada">Caducidad <input id="dxCaducidad" readonly></div>
+            <div class="campo dx-aplicada">¿Quién aplicó? <select id="dxVacunador"></select></div>
+            <div class="campo dx-previa">Fuente <select id="dxFuente"><option value="">Seleccione…</option><option>CARTILLA</option><option>OTRA INSTITUCIÓN</option><option>REFERIDA</option></select></div>
+            <div class="campo dx-previa">Lote de esa dosis <input id="dxLoteP" autocomplete="off"><label class="hint"><input type="checkbox" id="dxLotePNc"> No consta</label></div>
+            <div class="campo dx-previa">Caducidad de esa dosis <input type="date" id="dxCadP"><label class="hint"><input type="checkbox" id="dxCadPNc"> No consta</label></div>
+          </div>
+          <p class="hint" id="dxUnidad"></p>
+          <div class="exp-acciones"><button class="btn" type="button" id="btnGuardarDosis">Guardar dosis</button><button class="btn sec" type="button" id="btnCancelarDosis">Cancelar</button></div>
+        </div>
+        <div id="expMsg" class="msg" role="status" aria-live="polite"></div>
+        <h4>Lo que le falta (esquema 2026)</h4>
+        <div id="expFaltan"></div>
+        <h4>Historial de vacunación (todas las unidades)</h4>
+        <div id="expHistorial" class="tabla-wrap"></div>
+        <div id="expEsavi"></div>
+      </fieldset>
+
+      <fieldset class="persona">
         <legend>Datos de la persona</legend>
         <div class="escaneo">
           <div class="campo ancho">Escanear o escribir CURP (lector, cámara o teclado)
@@ -148,7 +186,7 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
         </div>
       </fieldset>
 
-      <fieldset id="fsTutor" style="display:none">
+      <fieldset class="persona" id="fsTutor" style="display:none">
         <legend>Tutor o acompañante (menores de 18 años)</legend>
         <div class="grid">
           <div class="campo">Nombre <input name="acompNombre"></div>
@@ -162,7 +200,7 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
         </div>
       </fieldset>
 
-      <fieldset>
+      <fieldset class="persona">
         <legend>Domicilio</legend>
         <div class="grid">
           <div class="campo">Código postal
@@ -184,7 +222,7 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
 
 
 
-      <fieldset>
+      <fieldset id="fsVacunas" class="persona">
         <legend>Esquema de vacunación</legend>
         <p class="hint" id="pistaVac">Capture la fecha de nacimiento para cargar las vacunas del anexo. Cada dosis muestra solo los lotes de su biológico.</p>
         <div class="campo" style="max-width:260px">Fecha de aplicación (para las dosis marcadas)
@@ -228,14 +266,26 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
         #entClave { text-transform:none; }
         .sesion-chip { display:flex; flex-wrap:wrap; align-items:center; gap:10px; font-size:12px; font-weight:600; color:var(--muted); }
         .sesion-chip .btn { min-height:38px; padding:8px 14px; }
-        body[data-perfil=consulta] #frm button[type=submit], body[data-perfil=consulta] #buscaCurp { display:none; }
+        body[data-perfil=consulta] #frm button[type=submit], body[data-perfil=consulta] .solo-captura { display:none; }
+        #frm[data-vista=expediente] > fieldset.persona, #frm[data-vista=expediente] > button[type=submit] { display:none !important; }
+        #frm[data-vista=persona] > #fsBuscar, #frm[data-vista=persona] > #fsExpediente { display:none; }
+        #frm[data-vista=expediente] > #msg:not(.err):not(.ok),
+        #frm[data-vista=expediente] > #msg:not(.err):not(.ok) { display:none; }
+        #fsVacunas { display:none !important; }
+        .exp-cab { display:flex; flex-wrap:wrap; gap:8px 16px; align-items:baseline; margin-bottom:12px; }
+        .exp-cab h3 { margin:0; font-size:18px; }
+        .exp-cab .etq { font-size:11px; }
+        .exp-acciones { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+        .exp-dosis .grid { margin-top:8px; }
+        .exp-dosis[hidden] { display:none; }
+        #resultadosBusqueda button { text-align:left; }
         #bcResultado .msg { display:block; }
         body[data-perfil=consulta] #frm::before { content:'Perfil de consulta: puede ver el registro; la captura la hace la unidad.'; display:block; margin-bottom:16px; padding:12px 16px; border-radius:10px; background:var(--gold-soft); color:var(--gold); font-size:13px; }
         .clave-nueva { font-size:22px; font-weight:700; letter-spacing:.06em; text-transform:none; user-select:all; }
         .etq.PROXIMA { background:#e8f1fb; color:#1d4f8a; } .etq.FUERA { background:#eceff1; color:#55606a; }
       </style>
 
-      <fieldset>
+      <fieldset class="persona">
         <legend>Seguimiento</legend>
         <div class="grid">
           <div class="campo">Estatus <select name="estatus" id="selEstatus"></select></div>
@@ -1557,7 +1607,6 @@ function aplicarPerfil() {
   $('#sesionChip').hidden = false;
   $('#sesUsuario').textContent = s.rol === 'UNIVERSAL' ? s.nombre : s.usuario + ' · ' + (s.nombre || s.rol);
   $('#btnSalir').hidden = s.rol === 'UNIVERSAL';
-  $('#buscaCurp').hidden = s.rol !== 'UNIDAD';  // con acceso general ya se ven todas las unidades
   document.body.dataset.perfil = s.captura ? 'unidad' : 'consulta';
   $('#tab-captura').hidden = !s.captura;
   $('#tab-usuarios').hidden = !s.administra;
@@ -1583,54 +1632,200 @@ function aplicarPerfil() {
   }
 }
 
-/* ---------- Búsqueda intencional por CURP (servidor: Expediente.js) ---------- */
-async function buscarCurpOtras() {
-  const curp = $('#bcCurp').value.trim().toUpperCase();
-  const cont = $('#bcResultado'), btn = $('#btnBuscarCurp');
-  const aviso = (texto, error = false) => { cont.innerHTML = `<div class="msg ${error ? 'err' : 'ok'}">${esc(texto)}</div>`; };
+
+/* ---------- Expediente: buscar, ver historial y registrar dosis (servidor: Expediente.js) ---------- */
+let EXP = null;
+let MODO_DOSIS = 'APLICADA';
+
+function msgExp(texto, error = false) {
+  const m = $('#expMsg');
+  m.textContent = texto;
+  m.className = 'msg ' + (error ? 'err' : 'ok');
+}
+
+async function buscarPersona() {
+  const cont = $('#resultadosBusqueda');
+  const curp = $('#bxCurp').value.trim().toUpperCase();
+  const f = curp ? { curp } : { nombre: $('#bxNombre').value.trim(), fechaNacimiento: $('#bxNacimiento').value };
+  const btn = $('#btnBuscarPersona');
   btn.disabled = true;
   try {
-    const r = await llamar('buscarCurp', curp);
-    if (r.estado === 'NO_REGISTRADA') return aviso('Esta CURP no está registrada en ninguna unidad. Puede capturarla normalmente.');
-    if (r.estado === 'EN_MI_UNIDAD') {
-      cont.innerHTML = `<div class="msg ok">Ya está registrada en su unidad, folio ${esc(r.folio)}.</div>
-        <button class="btn sec" type="button" onclick="abrir('${esc(r.folio)}')">Abrir registro</button>`;
-      return;
-    }
-    cont.innerHTML = `<div class="msg ok"><b>${esc(r.nombre)}</b> · nacimiento ${fechaMx(r.fechaNacimiento)}<br>
-        Registrada en ${esc(r.unidad)} (${esc(r.clues)}) el ${fechaMx(r.fechaRegistro)}</div>
-      <div class="tabla-wrap"><table><thead><tr><th>Vacuna</th><th>Dosis</th><th>Fecha</th><th>Lote</th><th>Caducidad</th></tr></thead><tbody>` +
-      (r.esquema.map(v => `<tr><td>${esc(v.vacuna)}</td><td>${esc(v.dosis)}</td><td>${fechaMx(v.fecha)}</td>
-        <td>${esc(v.lote)}</td><td>${esc(v.caducidad)}</td></tr>`).join('') || '<tr><td colspan="5">Sin dosis registradas</td></tr>') +
-      `</tbody></table></div>
-      <p class="hint">Se crea una copia en su unidad con estas dosis como previas. El registro de la otra unidad no cambia.</p>
-      <button class="btn" type="button" id="btnTraerCurp">Traer a mi unidad</button>`;
-    $('#btnTraerCurp').onclick = () => traerExpediente(curp);
+    const lista = await llamar('pacienteBuscar', f);
+    cont.innerHTML = lista.length
+      ? lista.map(p => `<button class="btn sec" type="button" data-exp="${esc(p.folio)}" style="width:100%;margin-top:6px;justify-content:flex-start">
+          <span><b>${esc(p.nombreCompleto)}</b> · ${esc(p.curp)} · ${fechaMx(p.fechaNacimiento)}${p.estadoRegistro === 'POR CONFIRMAR' ? ' · <span class="etq PENDIENTE">por confirmar</span>' : ''}
+          <br><small>${esc(p.folio)}${p.ultimaUnidad ? ' · última vacuna en ' + esc(p.ultimaUnidad) : ''}</small></span></button>`).join('')
+      : '<div class="msg err">No se encontró. Revise los datos o use "Registrar persona nueva".</div>';
   } catch (e) {
-    aviso(e.message, true);
+    cont.innerHTML = `<div class="msg err">${esc(e.message)}</div>`;
   } finally {
     btn.disabled = false;
   }
 }
 
-async function traerExpediente(curp) {
-  const cont = $('#bcResultado');
-  $('#btnTraerCurp').disabled = true;
+async function abrirExpediente(folio) {
   try {
-    const r = await llamar('traerAMiUnidad', curp);
-    cont.innerHTML = '';
-    $('#bcCurp').value = '';
-    $('#buscaCurp').open = false;
-    await abrir(r.folio);
-    msg(`Expediente traído: folio ${r.folio}, ${r.dosis} dosis previa(s). Revise los datos y guarde si hay cambios.`);
+    EXP = await llamar('expedienteObtener', folio);
   } catch (e) {
-    cont.insertAdjacentHTML('beforeend', `<div class="msg err">${esc(e.message)}</div>`);
-    $('#btnTraerCurp').disabled = false;
+    $('#resultadosBusqueda').innerHTML = `<div class="msg err">${esc(e.message)}</div>`;
+    return;
+  }
+  editando = folio;
+  frm.dataset.vista = 'expediente';
+  $('#fsExpediente').hidden = false;
+  $('#expDosis').hidden = true;
+  $('#expMsg').className = 'msg';
+  pintarExpediente();
+  $('#fsExpediente').scrollIntoView({ behavior: 'smooth' });
+}
+
+function pintarExpediente() {
+  const p = EXP.paciente;
+  const miUnidad = CB.clues.valor;
+  const captura = SESION && SESION.captura;
+  $('#expCabecera').innerHTML = `<div class="exp-cab"><h3>${esc([p.nombre, p.paterno, p.materno].filter(Boolean).join(' '))}</h3>
+      <span>${esc(p.curp)} · ${fechaMx(p.fechaNacimiento)} · ${esc(p.edad)} años · ${esc(p.folio)}</span>
+      ${p.estadoRegistro === 'POR CONFIRMAR' ? '<span class="etq PENDIENTE">Se registró sola: revise y confirme sus datos</span>' : ''}</div>`;
+  $('#expFaltan').innerHTML = EXP.faltan.length
+    ? '<ul class="esquema" style="display:block">' + EXP.faltan.map(x => `<li><span class="etq ${x.estado.split(' ')[0]}">${ESTADO_DOSIS[x.estado]}</span>
+        <b>${esc(x.vacuna)} (${esc(x.dosis)})</b> desde ${fechaMx(x.desde)}${x.nota ? ' · ' + esc(x.nota) : ''}
+        ${captura ? `<button class="btn sec" type="button" data-aplicar="${esc(x.vacuna)}|${esc(x.dosis)}">Aplicar</button>` : ''}</li>`).join('') + '</ul>'
+    : '<p class="hint">Sin dosis pendientes según el esquema 2026.</p>';
+  $('#expHistorial').innerHTML = EXP.vacunas.length
+    ? `<table><thead><tr><th>Fecha</th><th>Vacuna</th><th>Dosis</th><th>Lote</th><th>Caducidad</th><th>Unidad</th><th>Aplicó</th><th>Origen</th><th></th></tr></thead><tbody>${
+      EXP.vacunas.slice().reverse().map(v => `<tr><td>${fechaMx(v.fecha)}</td><td>${esc(v.vacuna)}</td><td>${esc(v.dosis)}</td>
+        <td>${esc(v.lote)}</td><td>${esc(v.caducidad)}</td><td>${esc(v.unidad || v.clues)}</td><td>${esc(v.vacunador || '—')}</td>
+        <td>${v.origen === 'PREVIA' ? 'Previa · ' + esc(v.fuente) : 'Aplicada'}</td>
+        <td>${captura && v.id && v.clues === miUnidad ? `<button class="btn sec" type="button" data-quitar="${esc(v.id)}">Quitar</button>` : ''}</td></tr>`).join('')}</tbody></table>`
+    : '<p class="hint" style="padding:12px">Aún no tiene dosis registradas.</p>';
+  $('#expEsavi').innerHTML = EXP.esavi.length
+    ? '<h4>ESAVI</h4>' + EXP.esavi.map(e => `<p>${esc(e.id)} · ${esc(e.fechaReporte)} · ${e.grave === 'SI' ? '<b class="txt-err">GRAVE</b>' : 'no grave'} · ${esc(e.sintomas)} · ${esc(e.estatus)}</p>`).join('')
+    : '';
+}
+
+const anexoDeEdad = edad => (edad === '' || edad == null ? '' : Number(edad) <= 9 ? '1-A' : Number(edad) <= 19 ? '1-B' : '1-C');
+
+async function abrirFormDosis(modo, vacuna, dosis) {
+  MODO_DOSIS = modo;
+  const caja = $('#expDosis');
+  caja.hidden = false;
+  $('#expDosisTitulo').textContent = modo === 'PREVIA' ? 'Dosis previa (de la cartilla u otra institución)' : 'Vacuna aplicada hoy';
+  caja.querySelectorAll('.dx-aplicada').forEach(x => { x.hidden = modo === 'PREVIA'; });
+  caja.querySelectorAll('.dx-previa').forEach(x => { x.hidden = modo !== 'PREVIA'; });
+  const anexo = anexoDeEdad(EXP.paciente.edad);
+  const catalogo = CAT.vacunas.filter(v => !anexo || v.anexos.includes(anexo));
+  const nombres = [...new Set(catalogo.map(v => v.nombre))];
+  $('#dxVacuna').innerHTML = nombres.map(n => `<option ${n === vacuna ? 'selected' : ''}>${esc(n)}</option>`).join('');
+  $('#dxFecha').value = modo === 'PREVIA' ? '' : hoyLocalISO();
+  ['#dxLoteP', '#dxCadP'].forEach(id => { $(id).value = ''; $(id).disabled = false; });
+  ['#dxLotePNc', '#dxCadPNc'].forEach(id => { $(id).checked = false; });
+  $('#dxFuente').value = '';
+  alCambiarVacunaDosis(dosis);
+  const clues = CB.clues.valor;
+  const u = (CAT.unidades || []).find(x => x.clues === clues);
+  $('#dxUnidad').textContent = u ? 'Se registra en: ' + u.unidad + ' (' + clues + ')' : 'Seleccione arriba su unidad antes de guardar.';
+  const sel = $('#dxVacunador');
+  sel.innerHTML = '<option value="">Cargando…</option>';
+  if (modo === 'APLICADA' && clues) {
+    try {
+      const personal = await llamar('personalListar', clues);
+      sel.innerHTML = personal.length
+        ? '<option value="">Seleccione…</option>' + personal.map(x => `<option value="${esc(x.id)}">${esc(x.nombre)} · ${esc(x.perfil)}</option>`).join('')
+        : '<option value="">(la unidad aún no tiene personal en el catálogo)</option>';
+    } catch (e) { sel.innerHTML = '<option value="">' + esc(e.message) + '</option>'; }
+  }
+  caja.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function alCambiarVacunaDosis(dosis) {
+  const nombre = $('#dxVacuna').value;
+  const anexo = anexoDeEdad(EXP.paciente.edad);
+  const d = [...new Set(CAT.vacunas.filter(v => v.nombre === nombre && (!anexo || v.anexos.includes(anexo))).flatMap(v => v.dosis))];
+  $('#dxDosis').innerHTML = d.map(x => `<option ${x === dosis ? 'selected' : ''}>${esc(x)}</option>`).join('');
+  const lotes = CAT.biologicos.filter(b => coincide(nombre, b.biologico));
+  $('#dxLote').innerHTML = lotes.length
+    ? '<option value="">Seleccione…</option>' + lotes.map((b, i) => `<option value="${i}">${esc(b.lote)} · ${esc(b.biologico)}</option>`).join('')
+    : '<option value="">Sin lotes de este biológico en el catálogo</option>';
+  $('#dxLote').dataset.lotes = JSON.stringify(lotes);
+  $('#dxCaducidad').value = '';
+}
+
+async function guardarDosis() {
+  const clues = CB.clues.valor;
+  if (!clues) return msgExp('Seleccione arriba su unidad', true);
+  const base = { vacuna: $('#dxVacuna').value, dosis: $('#dxDosis').value, fecha: $('#dxFecha').value, clues };
+  const btn = $('#btnGuardarDosis');
+  btn.disabled = true;
+  try {
+    if (MODO_DOSIS === 'PREVIA') {
+      await llamar('previaRegistrar', EXP.paciente.folio, Object.assign(base, {
+        fuente: $('#dxFuente').value,
+        lote: $('#dxLotePNc').checked ? 'NO CONSTA' : $('#dxLoteP').value.trim(),
+        caducidad: $('#dxCadPNc').checked ? 'NO CONSTA' : $('#dxCadP').value
+      }));
+    } else {
+      const lotes = JSON.parse($('#dxLote').dataset.lotes || '[]');
+      const b = lotes[$('#dxLote').value];
+      await llamar('aplicacionRegistrar', EXP.paciente.folio, Object.assign(base, {
+        lote: b ? b.lote : '', caducidad: b ? b.caducidad : '', biologico: b ? b.biologico : '', idVacunador: $('#dxVacunador').value
+      }));
+    }
+    await abrirExpediente(EXP.paciente.folio);
+    msgExp('Dosis guardada');
+  } catch (e) {
+    msgExp(e.message, true);
+  } finally {
+    btn.disabled = false;
   }
 }
 
-$('#btnBuscarCurp').addEventListener('click', buscarCurpOtras);
-$('#bcCurp').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); buscarCurpOtras(); } });
+$('#btnBuscarPersona').addEventListener('click', buscarPersona);
+['#bxCurp', '#bxNombre', '#bxNacimiento'].forEach(id => $(id).addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); buscarPersona(); }
+}));
+// QR de la constancia CURP leído con lector: se queda solo con la CURP.
+$('#bxCurp').addEventListener('change', e => {
+  const d = CapturaCENSIA.leerQRCurp(e.target.value);
+  if (d && d.curp) e.target.value = d.curp;
+});
+$('#resultadosBusqueda').addEventListener('click', e => {
+  const b = e.target.closest('button[data-exp]');
+  if (b) abrirExpediente(b.dataset.exp);
+});
+$('#btnPersonaNueva').addEventListener('click', () => {
+  const curp = $('#bxCurp').value.trim().toUpperCase();
+  nuevo(true);
+  frm.dataset.vista = 'persona';
+  $('#tituloForm').textContent = 'Registrar persona nueva';
+  if (curp) { frm.elements.curp.value = curp; frm.elements.curp.dispatchEvent(new Event('change')); }
+  frm.elements.paterno.focus();
+});
+$('#btnNuevaDosis').addEventListener('click', () => abrirFormDosis('APLICADA'));
+$('#btnNuevaPrevia').addEventListener('click', () => abrirFormDosis('PREVIA'));
+$('#btnEditarPersona').addEventListener('click', () => cargarFormulario(EXP.paciente.folio));
+$('#btnCancelarDosis').addEventListener('click', () => { $('#expDosis').hidden = true; });
+$('#btnGuardarDosis').addEventListener('click', guardarDosis);
+$('#dxVacuna').addEventListener('change', () => alCambiarVacunaDosis());
+$('#dxLote').addEventListener('change', e => {
+  const b = JSON.parse(e.target.dataset.lotes || '[]')[e.target.value];
+  $('#dxCaducidad').value = b ? b.caducidad : '';
+});
+[['#dxLotePNc', '#dxLoteP'], ['#dxCadPNc', '#dxCadP']].forEach(([nc, campo]) => $(nc).addEventListener('change', e => {
+  $(campo).disabled = e.target.checked;
+  if (e.target.checked) $(campo).value = '';
+}));
+$('#fsExpediente').addEventListener('click', async e => {
+  const ap = e.target.closest('button[data-aplicar]');
+  if (ap) { const [v, d] = ap.dataset.aplicar.split('|'); return abrirFormDosis('APLICADA', v, d); }
+  const q = e.target.closest('button[data-quitar]');
+  if (q && confirm('¿Quitar esta dosis del expediente? Queda registrado en la bitácora.')) {
+    try {
+      await llamar('aplicacionEliminar', q.dataset.quitar);
+      await abrirExpediente(EXP.paciente.folio);
+      msgExp('Dosis quitada');
+    } catch (err) { msgExp(err.message, true); }
+  }
+});
 
 /* ---------- Usuarios (solo región) ---------- */
 let USUARIOS = [];
@@ -2250,18 +2445,7 @@ function mostrarCurp(errores) {
 async function guardar(ev) {
   ev.preventDefault();
   const d = leerForm();
-  d.vacunas = leerVacunas();
-
-  const sinFecha = [...document.querySelectorAll('.dosis')].some(r => r.querySelector('.m').checked && !r.querySelector('.f').value);
-  if (sinFecha) { msg('Capture la fecha de las dosis marcadas', true); return false; }
-  const sinLote = [...document.querySelectorAll('.dosis')]
-    .filter(r => r.querySelector('.m').checked && r.querySelector('.o').value !== 'PREVIA' && !r.dataset.lote);
-  if (sinLote.length) {
-    msg('Falta el lote en: ' + sinLote.map(r => r.dataset.vac + ' (' + r.dataset.dosis + ')').join(', '), true);
-    return false;
-  }
-  const erroresDosis = EsquemaCENSIA.validar(d, d.vacunas, hoyLocalISO());
-  if (erroresDosis.length) { msg(erroresDosis.join('. '), true); return false; }
+  // Las dosis se registran desde el expediente (cada una con su unidad y vacunador).
 
   const btn = frm.querySelector('button[type=submit]');
   btn.disabled = true;
@@ -2270,8 +2454,8 @@ async function guardar(ev) {
     const r = editando
       ? await llamar('actualizarRegistro', editando, d)
       : await llamar('crearRegistro', d);
-    msg((editando ? 'Actualizado' : 'Guardado') + ' con folio ' + r.folio);
-    if (!editando) nuevo(true);
+    msg((editando ? 'Datos actualizados y confirmados: ' : 'Persona registrada con expediente ') + r.folio);
+    await abrirExpediente(r.folio);
   } catch (e) {
     msg(e.message, true);
   } finally {
@@ -2300,7 +2484,10 @@ function nuevo(conservarMensaje = false) {
   anexoActual = null;
   vacunasNoVisibles = [];
   $('#vacunasConservadas').textContent = '';
-  $('#tituloForm').textContent = 'Nuevo registro';
+  $('#tituloForm').textContent = 'Buscar o registrar persona';
+  frm.dataset.vista = 'expediente';
+  $('#fsExpediente').hidden = true;
+  EXP = null;
   $('#vacunas').innerHTML = '';
   $('#esquemaBox').innerHTML = '';
   $('#pistaVac').style.display = '';
@@ -2312,17 +2499,27 @@ function nuevo(conservarMensaje = false) {
 }
 
 async function abrir(folio) {
+  activarTab('captura');
+  await abrirExpediente(folio);
+}
+
+/** Carga los datos de la persona en el formulario para revisarlos o corregirlos. */
+async function cargarFormulario(folio) {
   const { registro, vacunas } = await llamar('obtenerRegistro', folio);
   nuevo(true);
+  frm.dataset.vista = 'persona';
   editando = folio;
+  // La unidad es la de quien captura: la persona ya no tiene unidad propia en el expediente.
+  const deUnidad = ['jurisdiccion', 'munUnidad', 'clues', 'unidad', 'region'];
   Object.entries(registro).forEach(([k, v]) => {
+    if (deUnidad.includes(k)) return;
     if (CB[k]) return CB[k].fijar(v, true);
     const el = frm.elements[k];
     if (!el) return;
     if (el.type === 'checkbox') el.checked = v === 'SI';
     else el.value = v;
   });
-  $('#tituloForm').textContent = 'Editando ' + folio;
+  $('#tituloForm').textContent = 'Datos de ' + folio + (registro.estadoRegistro === 'POR CONFIRMAR' ? ' (por confirmar)' : '');
   actualizarTodo();
   renderVacunas(registro.anexo, vacunas);
   refrescarPersona();

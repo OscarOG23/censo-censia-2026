@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<script>window.API_CENSIA = "https://script.google.com/macros/s/AKfycbxYr4pUuz1Modhvhk4s8EvthEkN7upYnMMhzeQlfGkABLzWkx52XVit_bYkwYx4kipK/exec";</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Registro para vacunación</title>
+<!-- Autorregistro del paciente (expediente de vacunación). Se publica como web/registro.html con motor/web.js.
+     Solo crea el registro: nunca muestra datos de un expediente. Servidor: app/Expediente.js → autorregistro. -->
+<style>
+  :root { --verde:#0C6454; --borde:#d0d7e2; --err:#b71c1c; --fondo:#f3f5f8; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background:var(--fondo); color:#1f2a2e; font-size:17px; line-height:1.45; }
+  header { background:var(--verde); color:#fff; padding:18px 16px; }
+  header h1 { margin:0; font-size:20px; }
+  header p { margin:4px 0 0; opacity:.9; font-size:14px; }
+  main { max-width:560px; margin:auto; padding:16px; }
+  .tarjeta { background:#fff; border:1px solid var(--borde); border-radius:12px; padding:16px; margin-bottom:14px; }
+  .tarjeta h2 { font-size:17px; margin:0 0 6px; }
+  .campo { display:block; margin:12px 0; font-size:15px; }
+  .campo input, .campo select { display:block; width:100%; margin-top:4px; padding:10px; font:inherit; font-size:16px; border:1px solid var(--borde); border-radius:8px; background:#fff; }
+  .campo input { text-transform:uppercase; }
+  .campo input[type=date], .campo input[type=tel] { text-transform:none; }
+  label.op { display:flex; gap:10px; align-items:flex-start; padding:8px 0; font-size:15px; }
+  label.op input { width:22px; height:22px; margin-top:2px; flex-shrink:0; }
+  button { font:inherit; border-radius:10px; padding:14px; border:0; cursor:pointer; width:100%; background:var(--verde); color:#fff; }
+  button:disabled { opacity:.6; }
+  .ayuda { font-size:13px; color:#55606a; }
+  .alerta { background:#fdecea; color:var(--err); border-radius:10px; padding:14px; font-weight:600; }
+  .ok { background:#e8f5e9; color:#2e7d32; border-radius:10px; padding:14px; }
+  .aviso { font-size:13px; max-height:180px; overflow:auto; background:#f7f9fb; border:1px solid var(--borde); border-radius:8px; padding:10px; }
+  .oculto { display:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Registro para vacunación</h1>
+  <p>Jurisdicción Sanitaria XIX Texcoco · registre sus datos antes de acudir a su unidad de salud</p>
+</header>
+<main>
+  <div id="hecho" class="tarjeta oculto" role="status" aria-live="polite"></div>
+  <form id="f" novalidate>
+    <div class="tarjeta">
+      <h2>Su CURP</h2>
+      <label class="campo">CURP (18 caracteres)
+        <input name="curp" id="curp" maxlength="18" autocomplete="off" spellcheck="false" required>
+      </label>
+      <p class="ayuda" id="curpAyuda">La fecha de nacimiento y el sexo se toman de su CURP.</p>
+    </div>
+    <div class="tarjeta">
+      <h2>Datos de la persona que se vacunará</h2>
+      <label class="campo">Apellido paterno <input name="paterno" autocomplete="family-name" required></label>
+      <label class="campo">Apellido materno <input name="materno"></label>
+      <label class="campo">Nombre(s) <input name="nombre" autocomplete="given-name" required></label>
+      <label class="campo">Fecha de nacimiento <input type="date" name="fechaNacimiento" id="nac" required></label>
+      <label class="campo">Sexo <select name="sexo" id="sexo" required><option value="">—</option><option value="H">Hombre</option><option value="M">Mujer</option></select></label>
+      <label class="campo">Teléfono celular (10 dígitos) <input type="tel" name="telefono" inputmode="numeric" maxlength="10" autocomplete="tel-national"></label>
+      <label class="campo">Servicio de salud que tiene
+        <select name="derechohabiencia"><option value="">—</option><option>IMSS</option><option>ISSSTE</option><option>IMSS-BIENESTAR</option><option>OTRA</option><option>NINGUNA</option></select></label>
+      <label class="op"><input type="checkbox" id="indigena"> Se reconoce como indígena o afromexicano(a)</label>
+    </div>
+    <div class="tarjeta oculto" id="tutor">
+      <h2>Mamá, papá o tutor (menor de 18 años)</h2>
+      <label class="campo">Nombre completo <input name="acompNombre"></label>
+      <label class="campo">Parentesco <select name="parentesco"><option value="">—</option><option value="MADRE">Madre</option><option value="PADRE">Padre</option>
+        <option value="ABUELO(A)">Abuelo(a)</option><option value="TÍO(A)">Tío(a)</option><option value="TUTOR">Tutor</option><option value="OTRO">Otro</option></select></label>
+    </div>
+    <div class="tarjeta oculto" id="embarazo">
+      <h2>Embarazo</h2>
+      <label class="op"><input type="checkbox" id="embarazada"> Está embarazada</label>
+      <label class="campo oculto" id="fumCampo">Fecha de su última menstruación <input type="date" name="fum"></label>
+    </div>
+    <div class="tarjeta">
+      <h2>Domicilio</h2>
+      <label class="campo">Código postal <input name="cp" id="cp" inputmode="numeric" maxlength="5"></label>
+      <p class="ayuda" id="cpAyuda"></p>
+      <label class="campo">Municipio <input name="municipio" id="municipio"></label>
+      <label class="campo">Colonia <input name="colonia" id="colonia" list="colonias"><datalist id="colonias"></datalist></label>
+      <label class="campo">Calle <input name="calle"></label>
+      <label class="campo">Número <input name="numExt"></label>
+      <input type="hidden" name="entidad" id="entidad">
+    </div>
+    <div class="tarjeta">
+      <h2>Seguimiento</h2>
+      <label class="op"><input type="checkbox" id="whatsapp"> Acepto que me contacten por WhatsApp después de vacunarme para saber cómo me siento.</label>
+    </div>
+    <div class="tarjeta">
+      <h2>Aviso de privacidad</h2>
+      <!-- Texto provisional: lo debe validar el área jurídica de IMSS-Bienestar antes de abrir a otras jurisdicciones. -->
+      <div class="aviso">
+        <b>Aviso de privacidad simplificado (provisional).</b> Los datos personales y de salud que registre aquí se usarán
+        únicamente para integrar su expediente de vacunación, dar seguimiento a su esquema y a posibles eventos después de
+        la vacunación, y elaborar los informes del Programa de Vacunación Universal. Se tratan conforme a la Ley General de
+        Protección de Datos Personales en Posesión de Sujetos Obligados y solo los consulta el personal de salud. Puede
+        ejercer sus derechos de acceso, rectificación, cancelación y oposición en su unidad de salud.
+      </div>
+      <label class="op"><input type="checkbox" id="privacidad"> He leído el aviso de privacidad y acepto el uso de mis datos.</label>
+    </div>
+    <div id="error" class="alerta oculto" role="alert"></div>
+    <button type="submit" id="enviar">Enviar registro</button>
+  </form>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const llamar = (fn, ...args) => fetch(window.API_CENSIA, {
+  method: 'POST', credentials: 'omit', redirect: 'follow',
+  headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn, args })
+}).then(r => r.json()).then(r => { if (!r.ok) throw new Error(r.error); return r.valor; });
+
+const CURP = /^[A-Z]{4}(\d{2})(\d{2})(\d{2})([HMX])[A-Z]{5}([0-9A-Z])\d$/;
+function datosDeCurp(c) {
+  const m = CURP.exec(c);
+  if (!m) return null;
+  const anio = (/\d/.test(m[5]) ? 1900 : 2000) + Number(m[1]);
+  return { fecha: `${anio}-${m[2]}-${m[3]}`, sexo: m[4] === 'X' ? '' : m[4] };
+}
+function edad(iso) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+  const [a, m, d] = iso.split('-').map(Number), h = new Date();
+  let e = h.getFullYear() - a;
+  if (h.getMonth() + 1 < m || (h.getMonth() + 1 === m && h.getDate() < d)) e--;
+  return e;
+}
+function reglas() {
+  const e = edad($('#nac').value);
+  $('#tutor').classList.toggle('oculto', !(e !== null && e < 18));
+  const puede = $('#sexo').value === 'M' && e !== null && e >= 10 && e <= 59;
+  $('#embarazo').classList.toggle('oculto', !puede);
+  if (!puede) $('#embarazada').checked = false;
+  $('#fumCampo').classList.toggle('oculto', !$('#embarazada').checked);
+}
+$('#curp').addEventListener('input', e => {
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const d = datosDeCurp(e.target.value);
+  if (d) { $('#nac').value = d.fecha; if (d.sexo) $('#sexo').value = d.sexo; reglas(); }
+});
+['#nac', '#sexo', '#embarazada'].forEach(id => $(id).addEventListener('change', reglas));
+$('#cp').addEventListener('input', async e => {
+  const cp = e.target.value.replace(/\D/g, '');
+  e.target.value = cp;
+  if (cp.length !== 5) return;
+  $('#cpAyuda').textContent = 'Buscando…';
+  try {
+    const r = await llamar('buscarCP', cp);
+    if (!r.colonias.length) { $('#cpAyuda').textContent = 'Código postal no encontrado: escriba su domicilio.'; return; }
+    $('#entidad').value = r.estado;
+    $('#municipio').value = r.municipio.toUpperCase();
+    $('#colonias').innerHTML = [...new Set(r.colonias.map(c => c.colonia.toUpperCase()))].map(c => `<option value="${c.replace(/"/g, '')}">`).join('');
+    $('#cpAyuda').textContent = r.municipio + ', ' + r.estado;
+  } catch (err) { $('#cpAyuda').textContent = ''; }
+});
+
+$('#f').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const error = $('#error');
+  error.classList.add('oculto');
+  const datos = {};
+  new FormData($('#f')).forEach((v, k) => { datos[k] = String(v).trim(); });
+  Object.assign(datos, {
+    indigena: $('#indigena').checked ? 'SI' : 'NO', embarazada: $('#embarazada').checked ? 'SI' : 'NO',
+    seguimientoWA: $('#whatsapp').checked ? 'SI' : 'NO', privacidad: $('#privacidad').checked
+  });
+  const faltan = [];
+  if (!datos.curp) faltan.push('CURP');
+  if (!datos.paterno && !datos.materno) faltan.push('apellidos');
+  if (!datos.nombre) faltan.push('nombre');
+  if (!datos.fechaNacimiento) faltan.push('fecha de nacimiento');
+  if (!datos.sexo) faltan.push('sexo');
+  if (!$('#tutor').classList.contains('oculto') && (!datos.acompNombre || !datos.parentesco)) faltan.push('datos de mamá, papá o tutor');
+  if (!datos.privacidad) faltan.push('aceptar el aviso de privacidad');
+  if (faltan.length) {
+    error.textContent = 'Falta: ' + faltan.join(', ') + '.';
+    error.classList.remove('oculto');
+    return;
+  }
+  const btn = $('#enviar');
+  btn.disabled = true;
+  btn.textContent = 'Enviando…';
+  try {
+    const r = await llamar('autorregistro', datos);
+    $('#f').classList.add('oculto');
+    const hecho = $('#hecho');
+    hecho.classList.remove('oculto');
+    hecho.innerHTML = r.estado === 'RECIBIDO'
+      ? '<div class="ok"><b>Registro recibido.</b><br>Cuando acuda a su unidad de salud, presente su CURP: el personal encontrará su registro y anotará su vacuna.</div>'
+      : '<div class="ok"><b>Ya tiene un registro.</b><br>Presente su CURP en su unidad de salud. Si necesita corregir algún dato, el personal lo hará ahí.</div>';
+    window.scrollTo(0, 0);
+  } catch (e) {
+    error.textContent = e.message;
+    error.classList.remove('oculto');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Enviar registro';
+  }
+});
+</script>
+</body>
+</html>
