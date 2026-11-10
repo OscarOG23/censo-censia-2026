@@ -108,7 +108,9 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
 
       <fieldset id="fsExpediente" hidden>
         <legend>Expediente</legend>
+        <button class="btn sec" type="button" id="btnOtraPersona">‹ Buscar otra persona</button>
         <div id="expCabecera"></div>
+        <div id="expEmbarazo"></div>
         <div class="exp-acciones solo-captura">
           <button class="btn" type="button" id="btnNuevaDosis">Registrar vacuna aplicada hoy</button>
           <button class="btn sec" type="button" id="btnNuevaPrevia">Agregar dosis previa (cartilla)</button>
@@ -127,14 +129,16 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
             <div class="campo dx-previa">Lote de esa dosis <input id="dxLoteP" autocomplete="off"><label class="hint"><input type="checkbox" id="dxLotePNc"> No consta</label></div>
             <div class="campo dx-previa">Caducidad de esa dosis <input type="date" id="dxCadP"><label class="hint"><input type="checkbox" id="dxCadPNc"> No consta</label></div>
           </div>
+          <p class="hint" id="dxAviso" hidden></p>
           <p class="hint" id="dxUnidad"></p>
           <div class="exp-acciones"><button class="btn" type="button" id="btnGuardarDosis">Guardar dosis</button><button class="btn sec" type="button" id="btnCancelarDosis">Cancelar</button></div>
         </div>
         <div id="expMsg" class="msg" role="status" aria-live="polite"></div>
-        <h4>Lo que le falta (esquema 2026)</h4>
+        <h4>Cartilla de vacunación (esquema 2026)</h4>
+        <p class="hint">Toque una dosis <b>atrasada</b> o que <b>le toca</b> para aplicarla hoy, o una que <b>falta registrar</b> para capturarla de su cartilla.</p>
         <div id="expFaltan"></div>
         <h4>Historial de vacunación (todas las unidades)</h4>
-        <div id="expHistorial" class="tabla-wrap"></div>
+        <div id="expHistorial"></div>
         <div id="expEsavi"></div>
       </fieldset>
 
@@ -276,6 +280,47 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
         .exp-cab h3 { margin:0; font-size:18px; }
         .exp-cab .etq { font-size:11px; }
         .exp-acciones { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+        .exp-cab { padding-bottom:12px; border-bottom:1px solid var(--borde); }
+        #frm.con-exp > #fsBuscar { display:none; }
+        #btnOtraPersona { min-height:40px; margin-bottom:12px; padding:6px 12px; }
+        .cart-dosis { grid-template-columns:repeat(auto-fill, minmax(124px, 1fr)) !important; }
+        .exp-cab h3 { flex:1 1 100%; font-size:20px; line-height:1.25; }
+        .exp-cab .exp-meta { font-size:13px; color:var(--muted); }
+        .exp-estado { display:inline-flex; align-items:center; padding:5px 12px; border-radius:999px; font-size:12px; font-weight:700; }
+        .exp-estado.ok { background:#e6f3ea; color:var(--ok); } .exp-estado.mal { background:#fdecea; color:#b71c1c; } .exp-estado.ojo { background:#fff4d6; color:#7a5300; }
+        .exp-emb { display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; margin:0 0 12px; padding:12px 14px; border:1px solid #e3cfe6; border-radius:12px; background:#faf3fb; color:#55285a; font-size:13px; }
+        .exp-emb.aviso { background:#fff4d6; border-color:#ecd9a0; color:#7a5300; }
+        .exp-emb.neutro { background:var(--brand-soft); border-color:var(--borde); color:var(--ink); }
+        .exp-emb > span { flex:1 1 200px; } .exp-emb b { font-size:14px; }
+        .exp-emb .btn { min-height:44px; padding:8px 14px; }
+        .exp-emb .campo { flex:1 1 180px; }
+        #fsExpediente h4 { margin:20px 0 6px; font-size:15px; }
+        .cart-fila { margin-bottom:8px; padding:10px 12px; border:1px solid var(--borde); border-radius:12px; background:white; }
+        .cart-fila.accion { border-left:4px solid #c98a00; }
+        .cart-nombre { margin-bottom:8px; font-size:13px; font-weight:700; }
+        .cart-dosis { display:grid; grid-template-columns:repeat(auto-fill, minmax(136px, 1fr)); gap:6px; }
+        .cd { display:flex; flex-direction:column; gap:1px; min-height:58px; padding:8px 10px; border:1px solid transparent; border-radius:10px; background:#f1f3f0; color:var(--muted); font:inherit; font-size:12px; text-align:left; }
+        .cd b { font-size:13px; color:var(--ink); }
+        .cd-estado { font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+        .cd-det { font-size:11px; line-height:1.3; }
+        .cd-ir { margin-top:4px; font-size:12px; font-weight:700; }
+        .cd.APLICADA { background:#e6f3ea; color:var(--ok); }
+        .cd.ATRASADA { background:#fdecea; border-color:#f2bdb8; color:#b71c1c; }
+        .cd.PENDIENTE { background:#fff4d6; border-color:#ecd9a0; color:#7a5300; }
+        .cd.FALTA { background:white; border:1px dashed #a98fc7; color:#5d3f85; }
+        .cd.PROXIMA { background:#e8f1fb; color:#1d4f8a; }
+        button.cd { cursor:pointer; } button.cd:hover { filter:brightness(.97); }
+        .etq.FALTA { background:#f1eaf8; color:#5d3f85; }
+        .hist, .seg-lista { margin:0; padding:0; list-style:none; }
+        .hist li, .seg-lista li { display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; justify-content:space-between; padding:10px 0; border-top:1px solid #edf1eb; font-size:12px; }
+        .hist li:first-child, .seg-lista li:first-child { border-top:0; }
+        .hist li > div, .seg-lista li > div { display:flex; flex:1 1 220px; flex-direction:column; gap:3px; min-width:0; }
+        .hist b, .seg-lista b { font-size:13px; }
+        .hist .btn, .seg-lista .btn { min-height:40px; padding:6px 12px; }
+        .seg-grupo { margin-top:10px; padding:4px 14px 10px; border:1px solid var(--borde); border-radius:12px; background:white; }
+        .seg-grupo summary { display:flex; gap:8px; align-items:center; min-height:44px; font-size:14px; font-weight:700; cursor:pointer; }
+        .seg-chips { display:flex; flex-wrap:wrap; gap:4px 6px; }
+        .seg-chips .etq { font-size:11px; letter-spacing:0; text-transform:none; }
         .exp-dosis .grid { margin-top:8px; }
         .exp-dosis[hidden] { display:none; }
         #resultadosBusqueda button { text-align:left; }
@@ -321,11 +366,11 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
       </table>
     </div>
     <fieldset style="margin-top:24px">
-      <legend>Dosis pendientes de la unidad (esquema 2026)</legend>
-      <p class="hint">Personas de la unidad seleccionada en Captura con dosis atrasadas, que ya les tocan o que les tocan en los próximos 30 días.</p>
-      <button class="btn sec" type="button" id="btnPendientes" onclick="cargarDosisPendientes()">Ver dosis pendientes</button>
+      <legend>Seguimiento de la unidad (esquema 2026)</legend>
+      <p class="hint">Personas de la unidad seleccionada en Captura: a quién le falta una dosis, embarazadas con vacunas del embarazo y expedientes con dosis por registrar.</p>
+      <button class="btn sec" type="button" id="btnPendientes" onclick="cargarDosisPendientes()">Ver seguimiento de la unidad</button>
       <div id="pendMsg" class="msg" role="status" aria-live="polite"></div>
-      <div id="pendientes" class="tabla-wrap" hidden></div>
+      <div id="pendientes" hidden></div>
     </fieldset>
   </section>
 
@@ -1402,9 +1447,11 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
 
   function evaluarSerie(s, p, hoy) {
     const fechas = s.dosis.map(x => p.fecha(s.vacuna, x.d));
-    if (s.iniciada && !fechas[0]) return null;
-    const i = fechas.findIndex(f => !f);
-    if (i < 0) return null;
+    // La siguiente dosis va después de la última capturada: un hueco anterior es una dosis por registrar, no atrasada.
+    const ultima = fechas.reduce((u, f, n) => (f ? n : u), -1);
+    if (s.iniciada && ultima < 0) return null;
+    const i = ultima + 1;
+    if (i >= s.dosis.length) return null;
     const x = s.dosis[i];
     const edad = typeof x.edad === 'function' ? x.edad(p.nac) : x.edad;
     let desde = masMeses(p.nac, edad);
@@ -1472,8 +1519,87 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
       const v = lista.find(x => norm(x.vacuna) === norm(vacuna) && norm(x.dosis) === norm(d));
       return v ? v.fecha : '';
     };
-    return { nac, edad, anexo: anexoPorEdad(edad), vacunas: lista, fecha, fum: persona.fum,
-      embarazada: norm(persona.embarazada) === 'SI', tiene: f => lista.some(f) };
+    const dosisDe = (vacuna, d) => lista.find(x => norm(x.vacuna) === norm(vacuna) && norm(x.dosis) === norm(d)) || null;
+    return { nac, edad, anexo: anexoPorEdad(edad), vacunas: lista, fecha, dosisDe, fum: persona.fum,
+      embarazada: embarazo(persona, hoy).vigente, tiene: f => lista.some(f) };
+  }
+
+  /* ---------- Embarazo ----------
+   * Solo cuenta en mujeres de 10 a 59 años y deja de contar 42 semanas después de la FUM
+   * (así un embarazo que ya terminó no sigue pidiendo Tdpa ni VSR).
+   */
+  const SEMANAS_MAX = 42;
+  function embarazo(persona, hoy) {
+    const vacio = { aplica: false, declarada: false, vigente: false, vencido: false, semanas: null, fum: '', parto: '' };
+    if (!persona || !esISO(persona.fechaNacimiento) || !esISO(hoy)) return vacio;
+    const edad = edadAnios(persona.fechaNacimiento, hoy);
+    const sexo = norm(persona.sexo);
+    const enEdad = edad >= 10 && edad <= 59;
+    const declarada = norm(persona.embarazada) === 'SI';
+    const fum = declarada && esISO(persona.fum) && persona.fum <= hoy ? persona.fum : '';
+    const d = fum ? dias(fum, hoy) : null;
+    const vencido = d !== null && d > SEMANAS_MAX * 7;
+    return { aplica: sexo === 'M' && enEdad, declarada, vigente: declarada && sexo !== 'H' && enEdad && !vencido, vencido,
+      semanas: d === null ? null : Math.floor(d / 7), fum, parto: fum ? masDias(fum, 280) : '' };
+  }
+
+  /** '' si la vacuna puede registrarse a la persona; si no, el motivo. Las de embarazo: solo mujeres embarazadas. */
+  function permitida(persona, vacuna, origenDosis, hoy, fechaDosis) {
+    if (!/EMBARAZAD/.test(norm(vacuna))) return '';
+    if (norm(persona && persona.sexo) === 'H') return `${vacuna}: solo corresponde a mujeres embarazadas`;
+    if (norm(origenDosis) === 'PREVIA') return '';
+    const e = embarazo(persona, hoy);
+    if (e.vigente) return '';
+    // Dosis aplicada durante un embarazo ya registrado (captura tardía).
+    if (e.fum && esISO(fechaDosis) && fechaDosis >= e.fum && dias(e.fum, fechaDosis) <= SEMANAS_MAX * 7) return '';
+    return e.vencido ? `${vacuna}: el embarazo registrado ya pasó de ${SEMANAS_MAX} semanas; actualice el embarazo en el expediente`
+      : `${vacuna}: primero registre el embarazo en el expediente`;
+  }
+
+  /* ---------- Cartilla ----------
+   * Todas las vacunas que le corresponden hoy, con cada dosis en un estado:
+   * APLICADA, FALTA REGISTRAR (hay una dosis posterior capturada), ATRASADA, PENDIENTE, PROXIMA, DESPUES, FUERA DE EDAD.
+   */
+  function cartilla(persona, vacunas, hoy) {
+    if (!persona || !esISO(persona.fechaNacimiento) || !esISO(hoy) || persona.fechaNacimiento > hoy) return [];
+    const p = persona_(persona, vacunas, hoy);
+    const pend = calcular(persona, vacunas, hoy);
+    const filas = [], porNombre = {}, usadas = [], deSerie = {};
+    const fila = vacuna => {
+      const k = norm(vacuna);
+      if (!porNombre[k]) filas.push(porNombre[k] = { vacuna, dosis: [] });
+      return porNombre[k];
+    };
+    const aplicada = v => ({ dosis: v.dosis, estado: 'APLICADA', fecha: v.fecha, origen: origen(v), lote: v.lote || '',
+      unidad: v.unidad || v.clues || '', vacunador: v.vacunador || '', fuente: v.fuente || '', id: v.id || '', clues: v.clues || '' });
+    SERIES.filter(s => s.aplica(p)).forEach(s => {
+      const vs = s.dosis.map(x => p.dosisDe(s.vacuna, x.d));
+      const ultima = vs.reduce((u, v, n) => (v ? n : u), -1);
+      if (s.iniciada && ultima < 0) return;
+      deSerie[norm(s.vacuna)] = true;
+      const sig = pend.find(x => norm(x.vacuna) === norm(s.vacuna) && s.dosis.some(d => norm(d.d) === norm(x.dosis)));
+      const f = fila(s.vacuna);
+      s.dosis.forEach((x, i) => {
+        if (vs[i]) { usadas.push(vs[i]); f.dosis.push(aplicada(vs[i])); }
+        else if (i < ultima) f.dosis.push({ dosis: x.d, estado: 'FALTA REGISTRAR' });
+        else if (sig && norm(sig.dosis) === norm(x.d)) f.dosis.push({ dosis: x.d, estado: sig.estado, desde: sig.desde, hasta: sig.hasta, nota: sig.nota });
+        else f.dosis.push({ dosis: x.d, estado: sig && sig.estado === 'FUERA DE EDAD' ? 'FUERA DE EDAD' : 'DESPUES' });
+      });
+    });
+    pend.filter(x => !deSerie[norm(x.vacuna)]).forEach(x =>
+      fila(x.vacuna).dosis.push({ dosis: x.dosis, estado: x.estado, desde: x.desde, hasta: x.hasta, nota: x.nota }));
+    p.vacunas.filter(v => usadas.indexOf(v) < 0).forEach(v => fila(v.vacuna).dosis.push(aplicada(v)));
+    const orden = d => { const i = ORDEN.indexOf(norm(d.dosis)); return i < 0 ? ORDEN.length : i; };
+    filas.forEach(f => f.dosis.sort((a, b) => orden(a) - orden(b) || String(a.fecha || '').localeCompare(String(b.fecha || ''))));
+    return filas;
+  }
+
+  /** Conteo por estado de una cartilla. */
+  function resumenCartilla(filas) {
+    const r = { aplicadas: 0, porRegistrar: 0, atrasadas: 0, pendientes: 0, proximas: 0 };
+    const campo = { APLICADA: 'aplicadas', 'FALTA REGISTRAR': 'porRegistrar', ATRASADA: 'atrasadas', PENDIENTE: 'pendientes', PROXIMA: 'proximas' };
+    (filas || []).forEach(f => f.dosis.forEach(d => { if (campo[d.estado]) r[campo[d.estado]]++; }));
+    return r;
   }
 
   /** Siguiente dosis de cada serie que le corresponde a la persona (series completas no aparecen). */
@@ -1516,7 +1642,7 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
     return e;
   }
 
-  return { calcular, validar, origen, esAplicada, ESTADOS: ['PENDIENTE', 'ATRASADA', 'PROXIMA', 'FUERA DE EDAD'] };
+  return { calcular, validar, cartilla, resumenCartilla, embarazo, permitida, origen, esAplicada, ESTADOS: ['PENDIENTE', 'ATRASADA', 'PROXIMA', 'FUERA DE EDAD'] };
 });
 
 </script>
@@ -1667,11 +1793,14 @@ async function abrirExpediente(folio) {
   try {
     EXP = await llamar('expedienteObtener', folio);
   } catch (e) {
+    frm.classList.remove('con-exp');
+    $('#fsExpediente').hidden = true;
     $('#resultadosBusqueda').innerHTML = `<div class="msg err">${esc(e.message)}</div>`;
     return;
   }
   editando = folio;
   frm.dataset.vista = 'expediente';
+  frm.classList.add('con-exp');
   $('#fsExpediente').hidden = false;
   $('#expDosis').hidden = true;
   $('#expMsg').className = 'msg';
@@ -1679,28 +1808,108 @@ async function abrirExpediente(folio) {
   $('#fsExpediente').scrollIntoView({ behavior: 'smooth' });
 }
 
+const ESTADO_CART = { APLICADA: 'Aplicada', 'FALTA REGISTRAR': 'Falta registrar', ATRASADA: 'Atrasada', PENDIENTE: 'Le toca',
+  PROXIMA: 'Próxima', DESPUES: 'Después', 'FUERA DE EDAD': 'Fuera de edad' };
+const PESO_CART = { ATRASADA: 0, PENDIENTE: 1, 'FALTA REGISTRAR': 2, PROXIMA: 3 };
+const claseEstado = e => e.split(' ')[0];
+/** Fechas útiles de una dosis pendiente: se omiten las que quedan a más de un año (p. ej. "desde 2000" en un adulto). */
+function rangoDosis(x) {
+  const hoy = hoyLocalISO();
+  const cerca = iso => Math.abs(new Date(iso) - new Date(hoy)) <= 366 * 86400000;
+  const desde = x.desde && (x.estado === 'PROXIMA' || cerca(x.desde)) ? 'desde ' + fechaMx(x.desde) : '';
+  const hasta = x.hasta && cerca(x.hasta) ? 'hasta ' + fechaMx(x.hasta) : '';
+  return [desde, hasta].filter(Boolean).join(' ');
+}
+
+function chipDosis(vacuna, d, captura) {
+  const detalle = d.estado === 'APLICADA' ? fechaMx(d.fecha) + (d.origen === 'PREVIA' ? ' · previa' : '')
+    : d.estado === 'FALTA REGISTRAR' ? 'Hay una dosis posterior capturada'
+    : d.estado !== 'FUERA DE EDAD' && d.estado !== 'DESPUES' ? rangoDosis(d).replace(/^./, l => l.toUpperCase()) : '';
+  const cuerpo = `<b>${esc(d.dosis)}</b><span class="cd-estado">${ESTADO_CART[d.estado] || esc(d.estado)}</span>${
+    detalle ? `<span class="cd-det">${detalle}</span>` : ''}${d.nota && d.estado !== 'APLICADA' ? `<span class="cd-det">${esc(d.nota)}</span>` : ''}`;
+  const accion = !captura ? '' : d.estado === 'FALTA REGISTRAR' ? 'previa' : d.estado === 'ATRASADA' || d.estado === 'PENDIENTE' ? 'aplicar' : '';
+  return accion
+    ? `<button type="button" class="cd ${claseEstado(d.estado)}" data-${accion}="${esc(vacuna)}|${esc(d.dosis)}">${cuerpo}<span class="cd-ir">${accion === 'previa' ? 'Registrar ›' : 'Aplicar ›'}</span></button>`
+    : `<div class="cd ${claseEstado(d.estado)}">${cuerpo}</div>`;
+}
+
+function pintarCartilla(captura) {
+  const filas = (EXP.cartilla || []).map((f, i) => ({ f, i, peso: Math.min(4, ...f.dosis.map(d => (d.estado in PESO_CART ? PESO_CART[d.estado] : 4))) }))
+    .sort((a, b) => a.peso - b.peso || a.i - b.i);
+  return filas.length
+    ? filas.map(({ f, peso }) => `<div class="cart-fila${peso < 3 ? ' accion' : ''}"><div class="cart-nombre">${esc(f.vacuna)}</div>
+        <div class="cart-dosis">${f.dosis.map(d => chipDosis(f.vacuna, d, captura)).join('')}</div></div>`).join('')
+    : '<p class="hint">Sin vacunas que mostrar: revise la fecha de nacimiento.</p>';
+}
+
+function pintarEmbarazo(captura) {
+  const e = EXP.embarazo;
+  if (!e || !(e.aplica || e.declarada)) return '';
+  const boton = (accion, texto, sec) => (captura ? `<button class="btn${sec ? ' sec' : ''}" type="button" data-emb="${accion}">${texto}</button>` : '');
+  if (EXP.formEmbarazo) {
+    return `<div class="exp-emb neutro"><div class="campo">Fecha de última menstruación (puede ser aproximada)
+      <input type="date" id="embFum" max="${hoyLocalISO()}" value="${esc(e.fum || '')}"></div>
+      ${boton('guardar', 'Guardar embarazo')}${boton('cancelar', 'Cancelar', true)}</div>`;
+  }
+  if (e.vencido) {
+    return `<div class="exp-emb aviso"><span><b>El embarazo registrado ya pasó de 42 semanas.</b><br>Mientras no se actualice, no se piden vacunas de embarazo.</span>
+      ${boton('no', 'Ya terminó')}${boton('form', 'Corregir fecha', true)}</div>`;
+  }
+  if (e.vigente) {
+    const detalle = e.semanas === null ? 'Sin fecha de última menstruación: captúrela para calcular Tdpa y VSR'
+      : `Semana ${e.semanas} · fecha probable de parto ${fechaMx(e.parto)}`;
+    return `<div class="exp-emb"><span><b>Embarazada</b><br>${detalle}</span>
+      ${boton('form', e.semanas === null ? 'Capturar fecha' : 'Corregir fecha', true)}${boton('no', 'Ya no está embarazada', true)}</div>`;
+  }
+  return `<div class="exp-emb neutro"><span><b>¿Está embarazada?</b><br>Al registrarlo se activan Tdpa, VSR y Td de embarazo.</span>${boton('form', 'Registrar embarazo', true)}</div>`;
+}
+
 function pintarExpediente() {
   const p = EXP.paciente;
   const miUnidad = CB.clues.valor;
   const captura = SESION && SESION.captura;
+  const r = EXP.resumen;
+  const faltan = r ? r.atrasadas + r.pendientes : 0;
+  const estado = !r ? '' : faltan + r.porRegistrar === 0
+    ? '<span class="exp-estado ok">Esquema al corriente para su edad</span>'
+    : `<span class="exp-estado ${r.atrasadas ? 'mal' : 'ojo'}">${[faltan ? `Le ${faltan === 1 ? 'falta' : 'faltan'} ${faltan} dosis` : '',
+      r.porRegistrar ? `${r.porRegistrar} por registrar` : ''].filter(Boolean).join(' · ')}</span>`;
+  const sexo = { M: 'Mujer', H: 'Hombre' }[p.sexo] || '';
   $('#expCabecera').innerHTML = `<div class="exp-cab"><h3>${esc([p.nombre, p.paterno, p.materno].filter(Boolean).join(' '))}</h3>
-      <span>${esc(p.curp)} · ${fechaMx(p.fechaNacimiento)} · ${esc(p.edad)} años · ${esc(p.folio)}</span>
+      <span class="exp-meta">${[sexo, esc(p.edad) + ' años', fechaMx(p.fechaNacimiento), esc(p.curp), esc(p.folio)].filter(Boolean).join(' · ')}</span>
+      ${estado}
       ${p.estadoRegistro === 'POR CONFIRMAR' ? '<span class="etq PENDIENTE">Se registró sola: revise y confirme sus datos</span>' : ''}</div>`;
-  $('#expFaltan').innerHTML = EXP.faltan.length
-    ? '<ul class="esquema" style="display:block">' + EXP.faltan.map(x => `<li><span class="etq ${x.estado.split(' ')[0]}">${ESTADO_DOSIS[x.estado]}</span>
-        <b>${esc(x.vacuna)} (${esc(x.dosis)})</b> desde ${fechaMx(x.desde)}${x.nota ? ' · ' + esc(x.nota) : ''}
-        ${captura ? `<button class="btn sec" type="button" data-aplicar="${esc(x.vacuna)}|${esc(x.dosis)}">Aplicar</button>` : ''}</li>`).join('') + '</ul>'
-    : '<p class="hint">Sin dosis pendientes según el esquema 2026.</p>';
+  $('#expEmbarazo').innerHTML = pintarEmbarazo(captura);
+  $('#expFaltan').innerHTML = pintarCartilla(captura);
   $('#expHistorial').innerHTML = EXP.vacunas.length
-    ? `<table><thead><tr><th>Fecha</th><th>Vacuna</th><th>Dosis</th><th>Lote</th><th>Caducidad</th><th>Unidad</th><th>Aplicó</th><th>Origen</th><th></th></tr></thead><tbody>${
-      EXP.vacunas.slice().reverse().map(v => `<tr><td>${fechaMx(v.fecha)}</td><td>${esc(v.vacuna)}</td><td>${esc(v.dosis)}</td>
-        <td>${esc(v.lote)}</td><td>${esc(v.caducidad)}</td><td>${esc(v.unidad || v.clues)}</td><td>${esc(v.vacunador || '—')}</td>
-        <td>${v.origen === 'PREVIA' ? 'Previa · ' + esc(v.fuente) : 'Aplicada'}</td>
-        <td>${captura && v.id && v.clues === miUnidad ? `<button class="btn sec" type="button" data-quitar="${esc(v.id)}">Quitar</button>` : ''}</td></tr>`).join('')}</tbody></table>`
-    : '<p class="hint" style="padding:12px">Aún no tiene dosis registradas.</p>';
+    ? `<ul class="hist">${EXP.vacunas.slice().reverse().map(v => `<li><div><b>${esc(v.vacuna)} (${esc(v.dosis)})</b>
+        <span>${fechaMx(v.fecha)} · Lote ${esc(v.lote || '—')}${v.caducidad ? ' · Cad. ' + esc(v.caducidad) : ''}</span>
+        <span class="hint">${esc(v.unidad || v.clues || '')}${v.vacunador ? ' · Aplicó ' + esc(v.vacunador) : ''}</span></div>
+        <span class="etq ${v.origen === 'PREVIA' ? 'FUERA' : 'PROXIMA'}">${v.origen === 'PREVIA' ? 'Previa · ' + esc(v.fuente) : 'Aplicada'}</span>
+        ${captura && v.id && v.clues === miUnidad ? `<button class="btn sec" type="button" data-quitar="${esc(v.id)}">Quitar</button>` : ''}</li>`).join('')}</ul>`
+    : '<p class="hint">Aún no tiene dosis registradas.</p>';
   $('#expEsavi').innerHTML = EXP.esavi.length
     ? '<h4>ESAVI</h4>' + EXP.esavi.map(e => `<p>${esc(e.id)} · ${esc(e.fechaReporte)} · ${e.grave === 'SI' ? '<b class="txt-err">GRAVE</b>' : 'no grave'} · ${esc(e.sintomas)} · ${esc(e.estatus)}</p>`).join('')
     : '';
+}
+
+async function accionEmbarazo(accion) {
+  if (accion === 'form' || accion === 'cancelar') {
+    EXP.formEmbarazo = accion === 'form';
+    $('#expEmbarazo').innerHTML = pintarEmbarazo(true);
+    if (EXP.formEmbarazo) $('#embFum').focus();
+    return;
+  }
+  const clues = CB.clues.valor;
+  if (!clues) return msgExp('Seleccione arriba su unidad', true);
+  try {
+    await llamar('embarazoActualizar', EXP.paciente.folio, accion === 'guardar'
+      ? { embarazada: 'SI', fum: $('#embFum').value, clues } : { embarazada: 'NO', clues });
+    await abrirExpediente(EXP.paciente.folio);
+    msgExp(accion === 'guardar' ? 'Embarazo registrado: la cartilla ya incluye las vacunas de embarazo' : 'Embarazo actualizado');
+  } catch (e) {
+    msgExp(e.message, true);
+  }
 }
 
 const anexoDeEdad = edad => (edad === '' || edad == null ? '' : Number(edad) <= 9 ? '1-A' : Number(edad) <= 19 ? '1-B' : '1-C');
@@ -1709,12 +1918,20 @@ async function abrirFormDosis(modo, vacuna, dosis) {
   MODO_DOSIS = modo;
   const caja = $('#expDosis');
   caja.hidden = false;
+  $('#expMsg').className = 'msg';
+  $('#expMsg').textContent = '';
   $('#expDosisTitulo').textContent = modo === 'PREVIA' ? 'Dosis previa (de la cartilla u otra institución)' : 'Vacuna aplicada hoy';
   caja.querySelectorAll('.dx-aplicada').forEach(x => { x.hidden = modo === 'PREVIA'; });
   caja.querySelectorAll('.dx-previa').forEach(x => { x.hidden = modo !== 'PREVIA'; });
   const anexo = anexoDeEdad(EXP.paciente.edad);
   const catalogo = CAT.vacunas.filter(v => !anexo || v.anexos.includes(anexo));
-  const nombres = [...new Set(catalogo.map(v => v.nombre))];
+  // Sexo y embarazo: las vacunas de embarazadas solo se ofrecen a mujeres (aplicadas hoy: con embarazo vigente).
+  const nombres = [...new Set(catalogo.map(v => v.nombre))]
+    .filter(n => !window.EsquemaCENSIA || !EsquemaCENSIA.permitida(EXP.paciente, n, modo, hoyLocalISO()));
+  const e = EXP.embarazo;
+  const aviso = modo === 'APLICADA' && e && e.aplica && !e.vigente;
+  $('#dxAviso').hidden = !aviso;
+  $('#dxAviso').textContent = aviso ? 'Las vacunas de embarazo (Tdpa, VSR, Td en embarazadas) aparecen al registrar el embarazo arriba.' : '';
   $('#dxVacuna').innerHTML = nombres.map(n => `<option ${n === vacuna ? 'selected' : ''}>${esc(n)}</option>`).join('');
   $('#dxFecha').value = modo === 'PREVIA' ? '' : hoyLocalISO();
   ['#dxLoteP', '#dxCadP'].forEach(id => { $(id).value = ''; $(id).disabled = false; });
@@ -1800,6 +2017,14 @@ $('#btnPersonaNueva').addEventListener('click', () => {
   if (curp) { frm.elements.curp.value = curp; frm.elements.curp.dispatchEvent(new Event('change')); }
   frm.elements.paterno.focus();
 });
+$('#btnOtraPersona').addEventListener('click', () => {
+  frm.classList.remove('con-exp');
+  $('#fsExpediente').hidden = true;
+  ['#bxCurp', '#bxNombre', '#bxNacimiento'].forEach(id => { $(id).value = ''; });
+  $('#resultadosBusqueda').innerHTML = '';
+  $('#fsBuscar').scrollIntoView({ behavior: 'smooth' });
+  $('#bxCurp').focus({ preventScroll: true });
+});
 $('#btnNuevaDosis').addEventListener('click', () => abrirFormDosis('APLICADA'));
 $('#btnNuevaPrevia').addEventListener('click', () => abrirFormDosis('PREVIA'));
 $('#btnEditarPersona').addEventListener('click', () => cargarFormulario(EXP.paciente.folio));
@@ -1817,6 +2042,10 @@ $('#dxLote').addEventListener('change', e => {
 $('#fsExpediente').addEventListener('click', async e => {
   const ap = e.target.closest('button[data-aplicar]');
   if (ap) { const [v, d] = ap.dataset.aplicar.split('|'); return abrirFormDosis('APLICADA', v, d); }
+  const pr = e.target.closest('button[data-previa]');
+  if (pr) { const [v, d] = pr.dataset.previa.split('|'); return abrirFormDosis('PREVIA', v, d); }
+  const emb = e.target.closest('button[data-emb]');
+  if (emb) return accionEmbarazo(emb.dataset.emb);
   const q = e.target.closest('button[data-quitar]');
   if (q && confirm('¿Quitar esta dosis del expediente? Queda registrado en la bitácora.')) {
     try {
@@ -2486,6 +2715,7 @@ function nuevo(conservarMensaje = false) {
   $('#vacunasConservadas').textContent = '';
   $('#tituloForm').textContent = 'Buscar o registrar persona';
   frm.dataset.vista = 'expediente';
+  frm.classList.remove('con-exp');
   $('#fsExpediente').hidden = true;
   EXP = null;
   $('#vacunas').innerHTML = '';
@@ -2534,15 +2764,30 @@ async function cargarDosisPendientes() {
   btn.disabled = true;
   m.className = 'msg';
   try {
-    const filas = await llamar('dosisPendientes', clues);
+    const s = await llamar('seguimientoUnidad', clues);
+    const etiqueta = x => `<span class="etq ${claseEstado(x.estado)}">${ESTADO_DOSIS[x.estado]}</span> ${esc(x.vacuna)} (${esc(x.dosis)})${rangoDosis(x) ? ' · ' + rangoDosis(x) : ''}`;
+    const item = (x, cuerpo) => `<li><div><b>${esc(x.nombre)}</b><span class="hint">${esc(x.edad)} años${x.telefono ? ' · ' + esc(x.telefono) : ''}</span>${cuerpo}</div>
+      <button class="btn sec" type="button" onclick="abrir('${esc(x.folio)}')">Abrir</button></li>`;
+    const grupo = (titulo, n, clase, ayuda, html) => `<details class="seg-grupo" ${n ? 'open' : ''}><summary>${titulo} <span class="etq ${n ? clase : 'FUERA'}">${n}</span></summary>
+      <p class="hint">${ayuda}</p>${n ? `<ul class="seg-lista">${html}</ul>` : '<p class="hint">Nada pendiente.</p>'}</details>`;
+    const personas = [];
+    const porFolio = {};
+    s.dosis.forEach(x => {
+      if (!porFolio[x.folio]) personas.push(porFolio[x.folio] = Object.assign({ lista: [] }, x));
+      porFolio[x.folio].lista.push(x);
+    });
     cont.hidden = false;
-    cont.innerHTML = filas.length
-      ? `<table><thead><tr><th>Estado</th><th>Desde</th><th>Vacuna</th><th>Nombre</th><th>Edad</th><th>Teléfono</th><th></th></tr></thead><tbody>` +
-        filas.map(x => `<tr><td><span class="etq ${x.estado.split(' ')[0]}">${ESTADO_DOSIS[x.estado]}</span></td>
-          <td>${fechaMx(x.desde)}</td><td>${esc(x.vacuna)} (${esc(x.dosis)})</td><td>${esc(x.nombre)}</td>
-          <td>${esc(x.edad)}</td><td>${esc(x.telefono)}</td>
-          <td><button class="btn sec" onclick="abrir('${esc(x.folio)}')">Abrir</button></td></tr>`).join('') + '</tbody></table>'
-      : '<p class="hint" style="padding:16px">Sin dosis pendientes en la unidad.</p>';
+    cont.innerHTML =
+      grupo('Les falta una dosis', personas.length, s.dosis.some(x => x.estado === 'ATRASADA') ? 'ATRASADA' : 'PENDIENTE',
+        'Dosis atrasadas, que ya les tocan o que les tocan en los próximos 30 días.',
+        personas.map(x => item(x, x.lista.map(d => `<span>${etiqueta(d)}</span>`).join(''))).join('')) +
+      grupo('Embarazadas', s.embarazadas.length, 'PENDIENTE', 'Vacunas del embarazo: Tdpa desde la semana 20 y VSR de la semana 32 a la 36.',
+        s.embarazadas.map(x => item(x, x.vencido
+          ? '<span><span class="etq PENDIENTE">Confirmar</span> El embarazo pasó de 42 semanas: actualícelo en el expediente</span>'
+          : `<span>${x.semanas === null ? 'Sin fecha de última menstruación' : 'Semana ' + esc(x.semanas) + ' · parto probable ' + fechaMx(x.parto)}</span>` +
+            (x.vacunas.length ? x.vacunas.map(d => `<span>${etiqueta(d)}</span>`).join('') : '<span class="hint">Vacunas del embarazo al corriente</span>'))).join('')) +
+      grupo('Dosis por registrar', s.porRegistrar.length, 'FALTA', 'Tienen capturada una dosis posterior y falta la anterior: probablemente se aplicó y no se registró. Revise la cartilla.',
+        s.porRegistrar.map(x => item(x, `<span class="seg-chips">${x.dosis.map(d => `<span class="etq FALTA">${esc(d)}</span>`).join('')}</span>`)).join(''));
   } catch (e) {
     m.className = 'msg err';
     m.textContent = e.message;
