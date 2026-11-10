@@ -133,6 +133,7 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
             <div class="campo">Dosis <select id="dxDosis"></select></div>
             <div class="campo">Fecha <input type="date" id="dxFecha"></div>
             <div class="campo dx-aplicada">Lote <select id="dxLote"></select></div>
+            <div class="campo" id="dxLoteOtroCampo" hidden>Lote (como viene en el frasco) <input id="dxLoteOtro" autocomplete="off" spellcheck="false" maxlength="30" placeholder="P. ej. A23B045"></div>
             <div class="campo dx-aplicada">Caducidad <input id="dxCaducidad" readonly></div>
             <div class="campo dx-aplicada">¿Quién aplicó? <select id="dxVacunador"></select></div>
             <div class="campo dx-previa">Fuente <select id="dxFuente"><option value="">Seleccione…</option><option>CARTILLA</option><option>OTRA INSTITUCIÓN</option><option>REFERIDA</option></select></div>
@@ -334,6 +335,14 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
         .seg-grupo summary { display:flex; gap:8px; align-items:center; min-height:44px; font-size:14px; font-weight:700; cursor:pointer; }
         .seg-chips { display:flex; flex-wrap:wrap; gap:4px 6px; }
         .seg-chips .etq { font-size:11px; letter-spacing:0; text-transform:none; }
+        .etq.AL, .etq.COMPLETA { background:#e6f3ea; color:#1d5a35; }
+        .etq.EN { background:#e3f2f1; color:#155e58; }
+        .seg-totales { display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:8px; margin:6px 0 10px; }
+        .seg-totales button { display:flex; flex-direction:column; align-items:flex-start; gap:2px; min-height:58px; padding:8px 12px; border:1px solid var(--borde);
+          border-radius:10px; background:#fff; font:inherit; font-size:11px; color:var(--muted); cursor:pointer; text-align:left; }
+        .seg-totales button b { font-size:20px; color:var(--ink); font-variant-numeric:tabular-nums; }
+        .seg-totales button[aria-pressed=true] { border-color:var(--verde); box-shadow:inset 0 0 0 1px var(--verde); background:#f3f8f5; }
+        .seg-lista li[hidden] { display:none; }
         .exp-dosis .grid { margin-top:8px; }
         .exp-dosis[hidden] { display:none; }
         #resultadosBusqueda button { text-align:left; }
@@ -1754,6 +1763,24 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
     return r;
   }
 
+  /**
+   * Estado de la cartilla para el seguimiento: uno por vacuna y uno de la persona (el peor).
+   * Vacuna: ATRASADA > FALTA REGISTRAR > PENDIENTE > PROXIMA > EN CURSO (aplicadas y faltan dosis futuras) > COMPLETA.
+   * Persona: ATRASADA, FALTA REGISTRAR, PENDIENTE o AL CORRIENTE (próximas y en curso cuentan como al corriente).
+   */
+  const PEOR = ['ATRASADA', 'FALTA REGISTRAR', 'PENDIENTE', 'PROXIMA'];
+  function estadoCartilla(filas) {
+    const vacunas = (filas || []).map(f => {
+      const est = f.dosis.filter(d => !d.contada).map(d => d.estado);
+      const peor = PEOR.find(e => est.indexOf(e) >= 0);
+      const aplicadas = est.filter(e => e === 'APLICADA').length;
+      const estado = peor || (!aplicadas ? 'FUERA DE EDAD' : est.indexOf('DESPUES') >= 0 ? 'EN CURSO' : 'COMPLETA');
+      return { vacuna: f.vacuna, estado, aplicadas, total: est.filter(e => e !== 'FUERA DE EDAD').length };
+    }).filter(v => v.estado !== 'FUERA DE EDAD');
+    const peor = PEOR.slice(0, 3).find(e => vacunas.some(v => v.estado === e));
+    return { estado: peor || 'AL CORRIENTE', vacunas };
+  }
+
   /** Siguiente dosis de cada serie que le corresponde a la persona (series completas no aparecen). */
   function calcular(persona, vacunas, hoy) {
     if (!persona || !esISO(persona.fechaNacimiento) || !esISO(hoy) || persona.fechaNacimiento > hoy) return [];
@@ -1794,7 +1821,7 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
     return e;
   }
 
-  return { calcular, validar, cartilla, resumenCartilla, embarazo, permitida, origen, esAplicada, ESTADOS: ['PENDIENTE', 'ATRASADA', 'PROXIMA', 'FUERA DE EDAD'] };
+  return { calcular, validar, cartilla, resumenCartilla, estadoCartilla, embarazo, permitida, origen, esAplicada, ESTADOS: ['PENDIENTE', 'ATRASADA', 'PROXIMA', 'FUERA DE EDAD'] };
 });
 
 </script>
@@ -2121,11 +2148,23 @@ function alCambiarVacunaDosis(dosis) {
   const d = [...new Set(CAT.vacunas.filter(v => v.nombre === nombre && (!anexo || v.anexos.includes(anexo))).flatMap(v => v.dosis))];
   $('#dxDosis').innerHTML = d.map(x => `<option ${x === dosis ? 'selected' : ''}>${esc(x)}</option>`).join('');
   const lotes = CAT.biologicos.filter(b => coincide(nombre, b.biologico));
-  $('#dxLote').innerHTML = lotes.length
+  // Si el lote no está cargado en el catálogo se escribe a mano ("Otro lote") con su caducidad.
+  $('#dxLote').innerHTML = (lotes.length
     ? '<option value="">Seleccione…</option>' + lotes.map((b, i) => `<option value="${i}">${esc(b.lote)} · ${esc(b.biologico)}</option>`).join('')
-    : '<option value="">Sin lotes de este biológico en el catálogo</option>';
+    : '') + `<option value="otro" ${lotes.length ? '' : 'selected'}>${lotes.length ? 'Otro lote (no está en la lista)' : 'Escribir el lote (no hay lotes cargados)'}</option>`;
   $('#dxLote').dataset.lotes = JSON.stringify(lotes);
-  $('#dxCaducidad').value = '';
+  $('#dxLoteOtro').value = '';
+  alCambiarLoteDosis();
+}
+
+function alCambiarLoteDosis() {
+  const sel = $('#dxLote'), otro = sel.value === 'otro' && MODO_DOSIS !== 'PREVIA';
+  const b = JSON.parse(sel.dataset.lotes || '[]')[sel.value];
+  const cad = $('#dxCaducidad');
+  $('#dxLoteOtroCampo').hidden = !otro;
+  cad.type = otro ? 'date' : 'text';
+  cad.readOnly = !otro;
+  cad.value = b ? b.caducidad : '';
 }
 
 async function guardarDosis() {
@@ -2143,10 +2182,12 @@ async function guardarDosis() {
       }));
     } else {
       const lotes = JSON.parse($('#dxLote').dataset.lotes || '[]');
-      const b = lotes[$('#dxLote').value];
-      await llamar('aplicacionRegistrar', EXP.paciente.folio, Object.assign(base, {
-        lote: b ? b.lote : '', caducidad: b ? b.caducidad : '', biologico: b ? b.biologico : '', idVacunador: $('#dxVacunador').value
-      }));
+      const otro = $('#dxLote').value === 'otro';
+      const b = otro ? null : lotes[$('#dxLote').value];
+      await llamar('aplicacionRegistrar', EXP.paciente.folio, Object.assign(base, otro
+        ? { lote: $('#dxLoteOtro').value.trim(), caducidad: $('#dxCaducidad').value, biologico: '', loteManual: true }
+        : { lote: b ? b.lote : '', caducidad: b ? b.caducidad : '', biologico: b ? b.biologico : '' },
+        { idVacunador: $('#dxVacunador').value }));
     }
     await abrirExpediente(EXP.paciente.folio);
     msgExp('Dosis guardada');
@@ -2227,10 +2268,7 @@ $('#btnEditarPersona').addEventListener('click', () => cargarFormulario(EXP.paci
 $('#btnCancelarDosis').addEventListener('click', () => { $('#expDosis').hidden = true; });
 $('#btnGuardarDosis').addEventListener('click', guardarDosis);
 $('#dxVacuna').addEventListener('change', () => alCambiarVacunaDosis());
-$('#dxLote').addEventListener('change', e => {
-  const b = JSON.parse(e.target.dataset.lotes || '[]')[e.target.value];
-  $('#dxCaducidad').value = b ? b.caducidad : '';
-});
+$('#dxLote').addEventListener('change', alCambiarLoteDosis);
 [['#dxLotePNc', '#dxLoteP'], ['#dxCadPNc', '#dxCadP']].forEach(([nc, campo]) => $(nc).addEventListener('change', e => {
   $(campo).disabled = e.target.checked;
   if (e.target.checked) $(campo).value = '';
@@ -2414,6 +2452,7 @@ function Combo(input, onCambio) {
 
   const c = {
     input,
+    repintar: () => { if (document.activeElement === input) pintar(); },
     get valor() { return input.dataset.valor || ''; },
     fijar(v, silencio = false) {
       const anterior = c.valor;
@@ -2489,6 +2528,7 @@ CB.clues.input.addEventListener('input', () => {
   CB.jurisdiccion.fijar('', true);
   CB.munUnidad.fijar('', true);
   actualizarUni();
+  CB.clues.repintar();  // la lista ya abierta se pintó con los filtros anteriores
 });
 const CBI = {}; // combos de la pestaña Imprimir
 for (const id of ['impJur', 'impMun', 'impClues']) {
@@ -2972,8 +3012,21 @@ async function cargarDosisPendientes() {
       if (!porFolio[x.folio]) personas.push(porFolio[x.folio] = Object.assign({ lista: [] }, x));
       porFolio[x.folio].lista.push(x);
     });
+    // Estado de la cartilla de cada persona; los totales filtran la lista.
+    const t = s.totales || { personas: 0 };
+    const ESTADO_PERSONA = { ATRASADA: 'Con dosis atrasadas', 'FALTA REGISTRAR': 'Dosis por registrar', PENDIENTE: 'Le toca una dosis', 'AL CORRIENTE': 'Al corriente' };
+    const ESTADO_VACUNA = { ATRASADA: 'atrasada', 'FALTA REGISTRAR': 'falta registrar', PENDIENTE: 'le toca', PROXIMA: 'próxima', 'EN CURSO': 'en curso', COMPLETA: 'completa' };
+    const total = (clave, texto) => `<button type="button" data-filtro="${clave}" aria-pressed="${clave === '' ? 'true' : 'false'}"><b>${clave ? t[clave] || 0 : t.personas}</b>${texto}</button>`;
+    const cartillas = (s.cartillas || []).map(x => `<li data-estado="${esc(x.estado)}"><div><b>${esc(x.nombre)}</b>
+        <span class="hint">${esc(x.edad)} años${x.embarazada ? ' · embarazada' : ''} · <span class="etq ${claseEstado(x.estado)}">${ESTADO_PERSONA[x.estado]}</span></span>
+        <span class="seg-chips">${x.vacunas.map(v => `<span class="etq ${claseEstado(v.estado)}" title="${esc(v.aplicadas)} aplicada(s)">${esc(v.vacuna)} · ${ESTADO_VACUNA[v.estado] || esc(v.estado)}</span>`).join('')}</span></div>
+        <button class="btn sec" type="button" onclick="abrir('${esc(x.folio)}')">Abrir</button></li>`).join('');
     cont.hidden = false;
     cont.innerHTML =
+      `<details class="seg-grupo" open><summary>Estado de la cartilla <span class="etq ${t.ATRASADA ? 'ATRASADA' : 'AL'}">${t.personas}</span></summary>
+        <p class="hint">Cada persona de la unidad con el estado de cada vacuna que le corresponde. Toque un total para filtrar.</p>
+        <div class="seg-totales">${total('', 'Personas')}${total('ATRASADA', 'Con dosis atrasadas')}${total('FALTA REGISTRAR', 'Dosis por registrar')}${total('PENDIENTE', 'Le toca una dosis')}${total('AL CORRIENTE', 'Al corriente')}</div>
+        ${cartillas ? `<ul class="seg-lista" id="segCartillas">${cartillas}</ul>` : '<p class="hint">Aún no hay personas en esta unidad.</p>'}</details>` +
       grupo('Les falta una dosis', personas.length, s.dosis.some(x => x.estado === 'ATRASADA') ? 'ATRASADA' : 'PENDIENTE',
         'Dosis atrasadas, que ya les tocan o que les tocan en los próximos 30 días.',
         personas.map(x => item(x, x.lista.map(d => `<span>${etiqueta(d)}</span>`).join(''))).join('')) +
@@ -2991,6 +3044,13 @@ async function cargarDosisPendientes() {
     btn.disabled = false;
   }
 }
+
+$('#pendientes').addEventListener('click', e => {
+  const b = e.target.closest('.seg-totales button[data-filtro]');
+  if (!b) return;
+  b.parentElement.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  document.querySelectorAll('#segCartillas > li').forEach(li => { li.hidden = !!b.dataset.filtro && li.dataset.estado !== b.dataset.filtro; });
+});
 
 async function buscar() {
   const filas = await llamar('buscarRegistros', {
