@@ -40,6 +40,16 @@
   .sigue { margin:14px 0 0; padding-left:22px; font-size:15px; } .sigue li { margin:6px 0; }
   .aviso { font-size:13px; max-height:180px; overflow:auto; background:#f7f9f7; border:1px solid var(--borde); border-radius:10px; padding:10px; }
   .oculto { display:none; }
+  .qr { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:10px 0 4px; }
+  .sec { display:flex; align-items:center; justify-content:center; gap:8px; min-height:54px; padding:10px; border-radius:12px; border:1.5px solid var(--verde);
+    background:#fff; color:var(--verde); font-weight:700; font-size:15px; cursor:pointer; text-align:center; line-height:1.2; }
+  .sec svg { width:22px; height:22px; flex:0 0 22px; }
+  .sec:focus-within { outline:3px solid #24768b55; }
+  .archivo { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+  #camaraBox video { display:block; width:100%; border-radius:12px; background:#000; margin:10px 0 8px; }
+  #qrMsg:empty { display:none; }
+  #qrMsg { margin:8px 0 0; padding:10px 12px; border-radius:10px; font-size:14px; font-weight:600; }
+  #qrMsg.ok { background:#e6f3ea; color:#1d5a35; } #qrMsg.err { background:#fdecea; color:var(--err); }
 </style>
 </head>
 <body>
@@ -55,6 +65,15 @@
   <form id="f" novalidate>
     <div class="tarjeta">
       <h2>Su CURP</h2>
+      <p class="ayuda">Escanee el código QR de su constancia de CURP y se llenan solos su nombre, apellidos, fecha de nacimiento y sexo. También puede escribirla.</p>
+      <div class="qr">
+        <button type="button" class="sec" id="btnCamara"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="4" height="4"/><rect x="13" y="13" width="4" height="4"/><path d="M13 7h4v2M7 15v2h2"/></svg>Escanear QR</button>
+        <label class="sec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>Foto del QR
+          <input type="file" accept="image/*" capture="environment" id="fotoQR" class="archivo"></label>
+      </div>
+      <div id="camaraBox" hidden><video id="camaraVideo" playsinline muted></video>
+        <button type="button" class="sec" id="btnCerrarCamara" style="width:100%">Cerrar cámara</button></div>
+      <p id="qrMsg" role="status" aria-live="polite"></p>
       <label class="campo">CURP (18 caracteres)
         <input name="curp" id="curp" maxlength="18" autocomplete="off" spellcheck="false" required>
       </label>
@@ -114,6 +133,256 @@
   </form>
 </main>
 <script>
+/* Conversión de los valores capturados en la app a los códigos del formato CENSIA.
+ * Funciona en el navegador (window.ConversionesCENSIA) y en Node (module.exports).
+ * Tabla aprobada: docs/superpowers/specs/2026-10-26-imprimir-anexos-pdf-design.md §4.
+ */
+(function (raiz, fabrica) {
+  if (typeof module === 'object' && module.exports) module.exports = fabrica();
+  else raiz.ConversionesCENSIA = fabrica();
+})(this, function () {
+  const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toUpperCase().trim();
+
+  // La app guarda H = Hombre, M = Mujer; el formato usa F = Femenino, M = Masculino.
+  const SEXO = { H: 'M', M: 'F' };
+  const sexoFormato = s => SEXO[norm(s)] || '';
+
+  const DERECHOHABIENCIA = { 'IMSS': '2', 'ISSSTE': '3', 'IMSS-BIENESTAR': '4', 'OTRA': '9', 'NINGUNA': '1' };
+  const derechohabienciaCodigo = v => DERECHOHABIENCIA[norm(v)] || '';
+
+  const CURP = /^[A-Z]{4}(\d{2})(\d{2})(\d{2})([HMX])[A-Z]{5}([0-9A-Z])\d$/;
+
+  /** Fecha de nacimiento ISO y sexo (H/M) desde una CURP válida; null si no lo es. */
+  function datosDeCurp(curp) {
+    const m = CURP.exec(norm(curp));
+    if (!m) return null;
+    const [, aa, mm, dd, sexo, siglo] = m;
+    const anio = (/\d/.test(siglo) ? 1900 : 2000) + Number(aa);
+    const f = new Date(anio, Number(mm) - 1, Number(dd));
+    if (f.getFullYear() !== anio || f.getMonth() !== Number(mm) - 1 || f.getDate() !== Number(dd)) return null;
+    return { fechaNacimiento: `${anio}-${mm}-${dd}`, sexo };
+  }
+
+  /** Parentesco del formato: (1)..(12). Abuelo(a)/Tío(a) se resuelven con el sexo de la CURP. */
+  function parentescoCodigo(parentesco, curpAcompanante) {
+    const p = norm(parentesco);
+    if (!p) return '';
+    if (p === 'MADRE') return '(1)';
+    if (p === 'PADRE') return '(2)';
+    const datos = datosDeCurp(curpAcompanante);
+    const sexo = datos && datos.sexo;
+    if (p === 'ABUELO(A)' && sexo === 'H') return '(3)';
+    if (p === 'ABUELO(A)' && sexo === 'M') return '(4)';
+    if (p === 'TIO(A)' && sexo === 'H') return '(5)';
+    if (p === 'TIO(A)' && sexo === 'M') return '(6)';
+    return '(12)';
+  }
+
+  const leerISO = iso => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+    return m ? { anio: Number(m[1]), mes: Number(m[2]), dia: Number(m[3]) } : null;
+  };
+
+  /** Edad a la fecha de referencia: 'aamm' → "2a 6m" (1-A, 1-B); 'anios' → "26" (1-C). */
+  function edad(fechaIso, referencia, modo) {
+    const f = leerISO(fechaIso);
+    if (!f) return '';
+    const meses = (referencia.getFullYear() - f.anio) * 12 + (referencia.getMonth() + 1 - f.mes)
+      - (referencia.getDate() < f.dia ? 1 : 0);
+    if (meses < 0) return '';
+    const a = Math.floor(meses / 12);
+    return modo === 'aamm' ? `${a}a ${meses % 12}m` : String(a);
+  }
+
+  /** Día, mes y año como en el formato (sin ceros a la izquierda). */
+  function partesFecha(fechaIso) {
+    const f = leerISO(fechaIso);
+    return f ? { dia: String(f.dia), mes: String(f.mes), anio: String(f.anio) } : { dia: '', mes: '', anio: '' };
+  }
+
+  /** dd/mm/aaaa; si ya viene en otro formato se deja como está. */
+  function fechaCorta(valor) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(valor || ''));
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : String(valor || '');
+  }
+
+  function paginar(lista, porPagina) {
+    const paginas = [];
+    for (let i = 0; i < lista.length; i += porPagina) paginas.push(lista.slice(i, i + porPagina));
+    return paginas;
+  }
+
+  const cuatro = n => String(n).padStart(4, '0');
+  const folio = (indice, total) => `${cuatro(indice + 1)}/${cuatro(total)}`;
+
+  return {
+    norm, sexoFormato, derechohabienciaCodigo, datosDeCurp, parentescoCodigo,
+    edad, partesFecha, fechaCorta, paginar, folio,
+  };
+});
+
+/* Lógica pura de captura ágil: QR/CURP, reglas por edad/sexo y nombres de lugar.
+ * Navegador: window.CapturaCENSIA (requiere ConversionesCENSIA); Node: module.exports.
+ */
+(function (raiz, fabrica) {
+  if (typeof module === 'object' && module.exports) module.exports = fabrica(require('./conversiones.js'));
+  else raiz.CapturaCENSIA = fabrica(raiz.ConversionesCENSIA);
+})(this, function (C) {
+  const CURP = '[A-Z]{4}\\d{6}[HMX][A-Z]{5}[0-9A-Z]\\d';
+  const CURP_SOLA = new RegExp(`^${CURP}$`);
+  const CURP_Y_SEPARADOR = new RegExp(`^(${CURP})([^A-Z0-9])`);
+
+  // Conversiones.edad acepta prefijos ISO; aquí exigimos una fecha completa y real.
+  function fechaValida(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+    if (!m || Number(m[1]) < 1) return null;
+    const f = new Date(0);
+    f.setHours(0, 0, 0, 0);
+    f.setFullYear(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return f.getFullYear() === Number(m[1]) && f.getMonth() === Number(m[2]) - 1 &&
+      f.getDate() === Number(m[3]) ? f : null;
+  }
+
+  /** QR RENAPO: CURP|ANTERIOR|PATERNO|MATERNO|NOMBRE|SEXO|DD/MM/AAAA|ENTIDAD|CLAVE|.
+   * El carácter después de la CURP permite lectores con otra distribución de teclado.
+   * Devuelve null mientras un QR esté incompleto, para no aplicar datos parciales.
+   */
+  function leerQRCurp(texto) {
+    const t = String(texto == null ? '' : texto).toUpperCase().trim();
+    if (CURP_SOLA.test(t)) {
+      const d = C.datosDeCurp(t);
+      return d ? { curp: t, paterno: '', materno: '', nombre: '', sexo: d.sexo === 'X' ? '' : d.sexo,
+        fechaNacimiento: d.fechaNacimiento, fuente: 'curp' } : null;
+    }
+    const m = CURP_Y_SEPARADOR.exec(t);
+    if (!m || !C.datosDeCurp(m[1])) return null;
+    const p = t.split(m[2]).map(s => s.trim());
+    // CURP anterior y apellido materno pueden faltar en una constancia válida.
+    if (p.length < 9 || !p[2] || !p[4] || !p[7] || !p[8]) return null;
+    const sexo = { HOMBRE: 'H', MUJER: 'M', H: 'H', M: 'M' }[p[5]];
+    const f = /^(\d{2})\D(\d{2})\D(\d{4})$/.exec(p[6]);
+    if (!sexo || !f) return null;
+    const fechaNacimiento = `${f[3]}-${f[2]}-${f[1]}`;
+    if (!fechaValida(fechaNacimiento)) return null;
+    return { curp: p[0], paterno: p[2], materno: p[3], nombre: p[4], sexo,
+      fechaNacimiento, fuente: 'qr' };
+  }
+
+  /** Embarazo: mujeres de 10 a 59 años; tutor: menores de 18. */
+  function reglasPersona({ sexo, fechaNacimiento }, hoy) {
+    const vacio = { edad: null, preguntarEmbarazo: false, requiereTutor: false };
+    const nacimiento = fechaValida(fechaNacimiento);
+    const referencia = hoy || new Date();
+    if (!nacimiento || !Number.isFinite(referencia.getTime()) || nacimiento > referencia) return vacio;
+    const e = C.edad(fechaNacimiento, referencia, 'anios');
+    if (e === '' || !Number.isFinite(Number(e)) || Number(e) < 0) return vacio;
+    const edad = Number(e);
+    return { edad, preguntarEmbarazo: C.norm(sexo) === 'M' && edad >= 10 && edad <= 59,
+      requiereTutor: edad < 18 };
+  }
+
+  const ALIAS = {
+    'ESTADO DE MEXICO': 'MEXICO', 'EDO. DE MEXICO': 'MEXICO', EDOMEX: 'MEXICO',
+    'DISTRITO FEDERAL': 'CIUDAD DE MEXICO', CDMX: 'CIUDAD DE MEXICO',
+  };
+
+  /** Devuelve la opción original del catálogo, con prioridad a coincidencias exactas. */
+  function emparejarLugar(nombre, opciones) {
+    const n = C.norm(nombre);
+    if (!n) return null;
+    const exacta = opciones.find(o => C.norm(o) === n);
+    if (exacta) return exacta;
+    const canonico = s => ALIAS[C.norm(s)] || C.norm(s);
+    return opciones.find(o => canonico(o) === canonico(n)) || null;
+  }
+
+  return { leerQRCurp, reglasPersona, emparejarLugar };
+});
+
+/* Lector del QR de la constancia CURP con la cámara o con una foto (jsQR).
+ * Lo usan el buscador de la unidad (app/index.html) y la página del paciente (registro.html).
+ * Navegador: window.LectorQR. Una sola cámara abierta a la vez.
+ *   LectorQR.abrir({ video, caja, cargar, alLeer, alError })
+ *     cargar(): Promise<jsQR>; alLeer(texto): true si el texto sirvió (entonces se cierra la cámara).
+ *   LectorQR.leerFoto(archivo, cargar): Promise<texto del QR o ''>
+ *   LectorQR.cerrar()
+ */
+(function (raiz) {
+  let flujo = null, cuadro = null, seq = 0, actual = null;
+
+  function cerrar() {
+    ++seq;
+    if (cuadro) cancelAnimationFrame(cuadro);
+    cuadro = null;
+    if (flujo) flujo.getTracks().forEach(t => t.stop());
+    flujo = null;
+    if (actual) {
+      actual.video.srcObject = null;
+      actual.caja.hidden = true;
+      actual = null;
+    }
+  }
+
+  async function abrir(op) {
+    cerrar();
+    const intento = seq;
+    try {
+      const jsQR = await op.cargar();
+      const f = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      if (intento !== seq) { f.getTracks().forEach(t => t.stop()); return; }
+      flujo = f;
+      actual = op;
+      op.video.srcObject = f;
+      op.caja.hidden = false;
+      await op.video.play();
+      if (intento !== seq) return;
+      const lienzo = document.createElement('canvas');
+      const ctx = lienzo.getContext('2d', { willReadFrequently: true });
+      const leer = () => {
+        if (!flujo || intento !== seq) return;
+        try {
+          const v = op.video;
+          if (v.readyState >= v.HAVE_ENOUGH_DATA) {
+            lienzo.width = v.videoWidth; lienzo.height = v.videoHeight;
+            ctx.drawImage(v, 0, 0);
+            const img = ctx.getImageData(0, 0, lienzo.width, lienzo.height);
+            const qr = jsQR(img.data, img.width, img.height, { inversionAttempts: 'attemptBoth' });
+            if (qr && qr.data && op.alLeer(qr.data)) { cerrar(); return; }
+          }
+          cuadro = requestAnimationFrame(leer);
+        } catch (e) { cerrar(); op.alError('No se pudo leer la cámara. Use una foto del QR o escriba la CURP.'); }
+      };
+      leer();
+    } catch (e) {
+      if (intento !== seq) return;
+      cerrar();
+      op.alError('No se pudo abrir la cámara; use una foto del QR o escriba la CURP.');
+    }
+  }
+
+  async function leerFoto(archivo, cargar) {
+    cerrar();
+    const jsQR = await cargar();
+    const bmp = await createImageBitmap(archivo);
+    try {
+      const escala = Math.min(1, 2400 / Math.max(bmp.width, bmp.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(bmp.width * escala); c.height = Math.round(bmp.height * escala);
+      const ctx = c.getContext('2d');
+      ctx.drawImage(bmp, 0, 0, c.width, c.height);
+      const img = ctx.getImageData(0, 0, c.width, c.height);
+      const qr = jsQR(img.data, img.width, img.height, { inversionAttempts: 'attemptBoth' });
+      return qr && qr.data ? qr.data : '';
+    } finally { if (bmp.close) bmp.close(); }
+  }
+
+  raiz.LectorQR = { abrir, cerrar, leerFoto };
+  if (typeof window !== 'undefined') window.addEventListener('pagehide', cerrar);
+})(this);
+
+</script>
+<script>
 const $ = s => document.querySelector(s);
 const llamar = (fn, ...args) => fetch(window.API_CENSIA, {
   method: 'POST', credentials: 'omit', redirect: 'follow',
@@ -142,6 +411,47 @@ function reglas() {
   if (!puede) $('#embarazada').checked = false;
   $('#fumCampo').classList.toggle('oculto', !$('#embarazada').checked);
 }
+/* QR de la constancia CURP (RENAPO): CapturaCENSIA.leerQRCurp y LectorQR, los mismos que usa la unidad. */
+let jsqrCargando = null;
+function cargarJsQR() {
+  if (window.jsQR) return Promise.resolve(window.jsQR);
+  jsqrCargando = jsqrCargando || llamar('codigoLibreria', 'jsqr').then(b64 => {
+    const s = document.createElement('script');
+    s.textContent = new TextDecoder().decode(Uint8Array.from(atob(b64), c => c.charCodeAt(0)));
+    document.head.appendChild(s);
+    if (!window.jsQR) throw new Error('No se pudo cargar el lector');
+    return window.jsQR;
+  }).catch(e => { jsqrCargando = null; throw e; });
+  return jsqrCargando;
+}
+function msgQR(texto, ok) { $('#qrMsg').textContent = texto; $('#qrMsg').className = ok ? 'ok' : 'err'; }
+function aplicarQR(texto) {
+  const d = CapturaCENSIA.leerQRCurp(texto);
+  if (!d || !d.curp) return false;
+  $('#curp').value = d.curp;
+  const f = $('#f').elements;
+  if (d.fuente === 'qr') { f.paterno.value = d.paterno; f.materno.value = d.materno; f.nombre.value = d.nombre; }
+  if (d.fechaNacimiento) $('#nac').value = d.fechaNacimiento;
+  if (d.sexo) $('#sexo').value = d.sexo;
+  reglas();
+  msgQR(d.fuente === 'qr' ? '✓ Datos tomados de su CURP. Revíselos y continúe.' : '✓ Fecha de nacimiento y sexo tomados de su CURP.', true);
+  return true;
+}
+$('#btnCamara').addEventListener('click', () => {
+  msgQR('', true);
+  LectorQR.abrir({ video: $('#camaraVideo'), caja: $('#camaraBox'), cargar: cargarJsQR, alLeer: aplicarQR, alError: t => msgQR(t, false) });
+});
+$('#btnCerrarCamara').addEventListener('click', () => LectorQR.cerrar());
+$('#fotoQR').addEventListener('change', e => {
+  const archivo = e.target.files[0];
+  e.target.value = '';
+  if (!archivo) return;
+  msgQR('Leyendo la foto…', true);
+  LectorQR.leerFoto(archivo, cargarJsQR)
+    .then(t => { if (!aplicarQR(t)) msgQR('No se encontró el QR de una CURP en la foto. Tome otra foto más cerca o escriba su CURP.', false); })
+    .catch(() => msgQR('No se pudo leer la foto. Intente otra o escriba su CURP.', false));
+});
+
 $('#curp').addEventListener('input', e => {
   e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
   const d = datosDeCurp(e.target.value);

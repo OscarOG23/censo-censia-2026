@@ -93,7 +93,17 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
 
       <fieldset id="fsBuscar">
         <legend>Buscar persona</legend>
-        <p class="hint">Busque por CURP (escrita o con el lector) o por nombre y fecha de nacimiento. Si la persona se registró sola en la página del paciente, aquí aparece.</p>
+        <p class="hint">Escanee el QR de la CURP o escríbala: con los 18 caracteres se busca sola y, si hay una sola persona, se abre su expediente. También puede buscar por nombre y fecha de nacimiento.</p>
+        <div class="exp-acciones bx-qr">
+          <button class="btn sec" type="button" id="btnBxCamara"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 5 2-2h4l2 2h4a2 2 0 0 1 2 2v12H2V7a2 2 0 0 1 2-2z"/><circle cx="12" cy="12" r="4"/></svg>Escanear QR de la CURP</button>
+          <label class="btn sec photo-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1"/><path d="m21 15-6-6L3 21"/></svg>Foto del QR
+            <input type="file" accept="image/*" capture="environment" id="bxFotoQR" class="file-input"></label>
+        </div>
+        <div id="bxCamaraBox" class="bx-camara" hidden>
+          <video id="bxCamaraVideo" playsinline muted></video>
+          <button type="button" class="btn sec" id="btnBxCerrarCamara">Cerrar cámara</button>
+        </div>
+        <div class="msg" id="bxScanMsg"></div>
         <div class="grid">
           <div class="campo">CURP <input id="bxCurp" maxlength="18" autocomplete="off" spellcheck="false" placeholder="18 caracteres"></div>
           <div class="campo">Nombre y apellidos <input id="bxNombre" autocomplete="off" placeholder="P. ej. ANA PEREZ"></div>
@@ -282,6 +292,9 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
         .exp-acciones { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
         .exp-cab { padding-bottom:12px; border-bottom:1px solid var(--borde); }
         #frm.con-exp > #fsBuscar { display:none; }
+        .bx-qr { margin:4px 0 10px; }
+        .bx-camara { margin:0 0 12px; }
+        .bx-camara video { display:block; width:100%; max-width:420px; border-radius:10px; background:#000; margin-bottom:8px; }
         #btnOtraPersona { min-height:40px; margin-bottom:12px; padding:6px 12px; }
         .cart-dosis { grid-template-columns:repeat(auto-fill, minmax(124px, 1fr)) !important; }
         .exp-cab h3 { flex:1 1 100%; font-size:20px; line-height:1.25; }
@@ -581,7 +594,7 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
   else raiz.EquivalenciasCENSIA = fabrica(raiz.ConversionesCENSIA);
 })(this, function (C) {
   /** 1-B: hasta 11 años quinto de primaria; mujeres de 12 a 16, rezagadas; resto, quinto.
-   *  1-A: columna "Niñas y niños de 9 años". Las de víctimas de violación no se llenan solas. */
+   *  1-A: columna "Niñas y niños de 9 años". Las de víctimas de violación tienen su propia vacuna en el catálogo. */
   function columnaVPH(anexo, registro, fecha) {
     if (anexo === '1-A') return 'VPH 9 ANOS|UNICA';
     const ref = /^\d{4}-\d{2}-\d{2}/.test(fecha || '') ? new Date(fecha.slice(0, 10) + 'T12:00:00') : new Date();
@@ -612,6 +625,7 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
       'VARICELA|UNICA': 'VARICELA|UNICA',
       'ANTI HEPATITIS A|UNICA': 'HEPATITIS A|UNICA',
       'VPH|UNICA': columnaVPH,
+      'VPH VICTIMAS DE VIOLACION SEXUAL|UNICA': 'VPH NINAS 9 VICTIMAS|UNICA',
       'COVID-19|1A': 'COVID-19|1a',
       'COVID-19|2A': 'COVID-19|2a',
       'COVID-19|REFUERZO': 'COVID-19|REFUERZO',
@@ -628,6 +642,13 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
       'TD|3A': 'TD|3a',
       'TD|REFUERZO': 'TD|REFUERZO',
       'VPH|UNICA': columnaVPH,
+      'VPH VICTIMAS DE VIOLACION SEXUAL|UNICA': 'VPH VICTIMAS|UNICA',
+      'VPH MUJERES CIS Y TRANS CON VIH|1A': 'VPH MUJERES VIH|1a',
+      'VPH MUJERES CIS Y TRANS CON VIH|2A': 'VPH MUJERES VIH|2a',
+      'VPH MUJERES CIS Y TRANS CON VIH|3A': 'VPH MUJERES VIH|3a',
+      'VPH HOMBRES CIS Y TRANS CON VIH|1A': 'VPH HOMBRES VIH|1a',
+      'VPH HOMBRES CIS Y TRANS CON VIH|2A': 'VPH HOMBRES VIH|2a',
+      'VPH HOMBRES CIS Y TRANS CON VIH|3A': 'VPH HOMBRES VIH|3a',
       // Nota del formato 2026: en 1-B y 1-C es una dosis anual con una sola columna, "FECHA (REFUERZO)";
       // la 1a o 2a capturadas son esa dosis anual.
       'COVID-19|1A': 'COVID-19|REFUERZO',
@@ -652,6 +673,7 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
       'ANTI HEPATITIS B (ADULTOS)|2A': 'HEPATITIS B|2a',
       'VPH MUJERES CIS Y TRANS CON VIH|1A': 'VPH MUJERES VIH|1a',
       'VPH MUJERES CIS Y TRANS CON VIH|2A': 'VPH MUJERES VIH|2a',
+      'VPH MUJERES CIS Y TRANS CON VIH|3A': 'VPH MUJERES VIH|3a',
       'VPH HOMBRES CIS Y TRANS CON VIH|1A': 'VPH HOMBRES VIH|1a',
       'VPH HOMBRES CIS Y TRANS CON VIH|2A': 'VPH HOMBRES VIH|2a',
       'VPH HOMBRES CIS Y TRANS CON VIH|3A': 'VPH HOMBRES VIH|3a',
@@ -1359,6 +1381,87 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
   return { leerQRCurp, reglasPersona, emparejarLugar };
 });
 
+/* Lector del QR de la constancia CURP con la cámara o con una foto (jsQR).
+ * Lo usan el buscador de la unidad (app/index.html) y la página del paciente (registro.html).
+ * Navegador: window.LectorQR. Una sola cámara abierta a la vez.
+ *   LectorQR.abrir({ video, caja, cargar, alLeer, alError })
+ *     cargar(): Promise<jsQR>; alLeer(texto): true si el texto sirvió (entonces se cierra la cámara).
+ *   LectorQR.leerFoto(archivo, cargar): Promise<texto del QR o ''>
+ *   LectorQR.cerrar()
+ */
+(function (raiz) {
+  let flujo = null, cuadro = null, seq = 0, actual = null;
+
+  function cerrar() {
+    ++seq;
+    if (cuadro) cancelAnimationFrame(cuadro);
+    cuadro = null;
+    if (flujo) flujo.getTracks().forEach(t => t.stop());
+    flujo = null;
+    if (actual) {
+      actual.video.srcObject = null;
+      actual.caja.hidden = true;
+      actual = null;
+    }
+  }
+
+  async function abrir(op) {
+    cerrar();
+    const intento = seq;
+    try {
+      const jsQR = await op.cargar();
+      const f = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      if (intento !== seq) { f.getTracks().forEach(t => t.stop()); return; }
+      flujo = f;
+      actual = op;
+      op.video.srcObject = f;
+      op.caja.hidden = false;
+      await op.video.play();
+      if (intento !== seq) return;
+      const lienzo = document.createElement('canvas');
+      const ctx = lienzo.getContext('2d', { willReadFrequently: true });
+      const leer = () => {
+        if (!flujo || intento !== seq) return;
+        try {
+          const v = op.video;
+          if (v.readyState >= v.HAVE_ENOUGH_DATA) {
+            lienzo.width = v.videoWidth; lienzo.height = v.videoHeight;
+            ctx.drawImage(v, 0, 0);
+            const img = ctx.getImageData(0, 0, lienzo.width, lienzo.height);
+            const qr = jsQR(img.data, img.width, img.height, { inversionAttempts: 'attemptBoth' });
+            if (qr && qr.data && op.alLeer(qr.data)) { cerrar(); return; }
+          }
+          cuadro = requestAnimationFrame(leer);
+        } catch (e) { cerrar(); op.alError('No se pudo leer la cámara. Use una foto del QR o escriba la CURP.'); }
+      };
+      leer();
+    } catch (e) {
+      if (intento !== seq) return;
+      cerrar();
+      op.alError('No se pudo abrir la cámara; use una foto del QR o escriba la CURP.');
+    }
+  }
+
+  async function leerFoto(archivo, cargar) {
+    cerrar();
+    const jsQR = await cargar();
+    const bmp = await createImageBitmap(archivo);
+    try {
+      const escala = Math.min(1, 2400 / Math.max(bmp.width, bmp.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(bmp.width * escala); c.height = Math.round(bmp.height * escala);
+      const ctx = c.getContext('2d');
+      ctx.drawImage(bmp, 0, 0, c.width, c.height);
+      const img = ctx.getImageData(0, 0, c.width, c.height);
+      const qr = jsQR(img.data, img.width, img.height, { inversionAttempts: 'attemptBoth' });
+      return qr && qr.data ? qr.data : '';
+    } finally { if (bmp.close) bmp.close(); }
+  }
+
+  raiz.LectorQR = { abrir, cerrar, leerFoto };
+  if (typeof window !== 'undefined') window.addEventListener('pagehide', cerrar);
+})(this);
+
 </script>
 
 <!-- GENERADO por motor/empaquetar.js — no editar a mano. -->
@@ -1409,6 +1512,7 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
    * hasta(nac): última fecha permitida; aplica(p): si la serie corresponde a la persona.
    */
   const NINOS = p => p.edad < 10;
+  const VIH = p => p.edad >= 11 && p.edad <= 49;
   const SERIES = [
     { vacuna: 'BCG', aplica: NINOS, dosis: [{ d: 'ÚNICA', edad: 0 }], hasta: nac => masDias(masMeses(nac, 60), -1) },
     { vacuna: 'Anti hepatitis B', aplica: NINOS, dosis: [{ d: 'ÚNICA', edad: 0 }], hasta: nac => masDias(nac, 7),
@@ -1431,8 +1535,10 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
     // Series de riesgo: solo se siguen si ya se aplicó la primera dosis.
     { vacuna: 'Anti hepatitis B', iniciada: true, aplica: p => p.edad >= 10, dosis: [{ d: '1a', edad: 0 }, { d: '2a', edad: 0, min: MIN }] },
     { vacuna: 'Anti hepatitis B (adultos)', iniciada: true, aplica: () => true, dosis: [{ d: '1a', edad: 0 }, { d: '2a', edad: 0, min: MIN }] },
-    { vacuna: 'VPH mujeres CIS y TRANS con VIH', iniciada: true, aplica: () => true, dosis: [{ d: '1a', edad: 0 }, { d: '2a', edad: 0, meses: 2 }] },
-    { vacuna: 'VPH hombres CIS y TRANS con VIH', iniciada: true, aplica: () => true,
+    // VIH: 11 a 49 años, 3 dosis 0-2-6 meses (Lineamientos 2026, pág. 45).
+    { vacuna: 'VPH mujeres CIS y TRANS con VIH', iniciada: true, aplica: VIH,
+      dosis: [{ d: '1a', edad: 0 }, { d: '2a', edad: 0, meses: 2 }, { d: '3a', edad: 0, mesesDesdePrimera: 6 }] },
+    { vacuna: 'VPH hombres CIS y TRANS con VIH', iniciada: true, aplica: VIH,
       dosis: [{ d: '1a', edad: 0 }, { d: '2a', edad: 0, meses: 2 }, { d: '3a', edad: 0, mesesDesdePrimera: 6 }] },
   ];
 
@@ -1543,17 +1649,49 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
       semanas: d === null ? null : Math.floor(d / 7), fum, parto: fum ? masDias(fum, 280) : '' };
   }
 
-  /** '' si la vacuna puede registrarse a la persona; si no, el motivo. Las de embarazo: solo mujeres embarazadas. */
-  function permitida(persona, vacuna, origenDosis, hoy, fechaDosis) {
-    if (!/EMBARAZAD/.test(norm(vacuna))) return '';
-    if (norm(persona && persona.sexo) === 'H') return `${vacuna}: solo corresponde a mujeres embarazadas`;
-    if (norm(origenDosis) === 'PREVIA') return '';
+  /**
+   * '' si la vacuna puede registrarse a la persona; si no, el motivo (Lineamientos 2026, págs. 41-46).
+   * Las dosis PREVIAS (de cartilla) solo se revisan por sexo: la edad y la semana valen para lo que se aplica hoy.
+   * vacunas (opcional): dosis ya capturadas, para "sin antecedente de VPH".
+   */
+  function permitida(persona, vacuna, origenDosis, hoy, fechaDosis, vacunas) {
+    const v = norm(vacuna), sexo = norm(persona && persona.sexo);
+    const previa = norm(origenDosis) === 'PREVIA';
+    const nac = persona && esISO(persona.fechaNacimiento) ? persona.fechaNacimiento : '';
+    const cuando = esISO(fechaDosis) ? fechaDosis : hoy;
+    const edad = nac && esISO(cuando) && cuando >= nac ? edadAnios(nac, cuando) : null;
+    if (/^VPH VICTIMAS/.test(v)) {
+      if (sexo === 'H') return `${vacuna}: corresponde a niñas y adolescentes de 9 a 19 años`;
+      if (previa) return '';
+      if (edad !== null && (edad < 9 || edad > 19)) return `${vacuna}: corresponde a niñas y adolescentes de 9 a 19 años`;
+      if ((vacunas || []).some(x => /^VPH/.test(norm(x.vacuna)))) return `${vacuna}: solo sin antecedente de vacuna contra el VPH`;
+      return '';
+    }
+    if (/^VPH .*VIH/.test(v)) {
+      return previa || edad === null || (edad >= 11 && edad <= 49) ? '' : `${vacuna}: corresponde a personas de 11 a 49 años que viven con VIH`;
+    }
+    if (v === 'VPH') {
+      if (previa || edad === null) return '';
+      if (edad < 9) return 'VPH: a partir de quinto de primaria (9 años o más)';
+      if (sexo === 'H' && edad > 12) return 'VPH: en hombres solo quinto de primaria u 11 años no escolarizados; después, solo por VIH';
+      if (edad > 16) return 'VPH: después de los 16 años solo por VIH o protocolo de violación sexual';
+      return '';
+    }
+    if (!/EMBARAZAD/.test(v)) return '';
+    if (sexo === 'H') return `${vacuna}: solo corresponde a mujeres embarazadas`;
+    if (previa) return '';
     const e = embarazo(persona, hoy);
-    if (e.vigente) return '';
     // Dosis aplicada durante un embarazo ya registrado (captura tardía).
-    if (e.fum && esISO(fechaDosis) && fechaDosis >= e.fum && dias(e.fum, fechaDosis) <= SEMANAS_MAX * 7) return '';
-    return e.vencido ? `${vacuna}: el embarazo registrado ya pasó de ${SEMANAS_MAX} semanas; actualice el embarazo en el expediente`
-      : `${vacuna}: primero registre el embarazo en el expediente`;
+    const tardia = e.fum && esISO(fechaDosis) && fechaDosis >= e.fum && dias(e.fum, fechaDosis) <= SEMANAS_MAX * 7;
+    if (!e.vigente && !tardia) {
+      return e.vencido ? `${vacuna}: el embarazo registrado ya pasó de ${SEMANAS_MAX} semanas; actualice el embarazo en el expediente`
+        : `${vacuna}: primero registre el embarazo en el expediente`;
+    }
+    const semanas = e.fum && esISO(cuando) ? Math.floor(dias(e.fum, cuando) / 7) : null;
+    if (semanas === null) return '';
+    if (/^TDPA/.test(v) && semanas < 20) return `${vacuna}: a partir de la semana 20 de gestación (lleva ${semanas})`;
+    if (/^VSR/.test(v) && (semanas < 32 || semanas > 36)) return `${vacuna}: entre las semanas 32 y 36 de gestación (lleva ${semanas})`;
+    return '';
   }
 
   /* ---------- Cartilla ----------
@@ -1586,19 +1724,33 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
         else f.dosis.push({ dosis: x.d, estado: sig && sig.estado === 'FUERA DE EDAD' ? 'FUERA DE EDAD' : 'DESPUES' });
       });
     });
+    // Toxoide tetánico: Td de cualquier grupo y Tdpa cuentan para el esquema 0-1-12 (Tdpa "en sustitución o no de Td",
+    // Lineamientos 2026 pág. 46). Se juntan en la fila del Td que le toca, en orden de fecha; la Tdpa sigue también en su fila.
+    const td = pend.find(x => /^TD\b/.test(norm(x.vacuna)));
+    if (td) {
+      const f = fila(td.vacuna);
+      f.toxoide = true;
+      p.vacunas.filter(v => /^TDPA|^TD\b/.test(norm(v.vacuna))).forEach(v => {
+        if (/^TDPA/.test(norm(v.vacuna))) f.dosis.push(Object.assign(aplicada(v), { dosis: 'Tdpa', contada: true, nota: 'Cuenta como dosis de Td' }));
+        else { usadas.push(v); f.dosis.push(aplicada(v)); }
+      });
+    }
     pend.filter(x => !deSerie[norm(x.vacuna)]).forEach(x =>
       fila(x.vacuna).dosis.push({ dosis: x.dosis, estado: x.estado, desde: x.desde, hasta: x.hasta, nota: x.nota }));
     p.vacunas.filter(v => usadas.indexOf(v) < 0).forEach(v => fila(v.vacuna).dosis.push(aplicada(v)));
     const orden = d => { const i = ORDEN.indexOf(norm(d.dosis)); return i < 0 ? ORDEN.length : i; };
-    filas.forEach(f => f.dosis.sort((a, b) => orden(a) - orden(b) || String(a.fecha || '').localeCompare(String(b.fecha || ''))));
+    const porFecha = (a, b) => String(a.fecha || '').localeCompare(String(b.fecha || ''));
+    filas.forEach(f => f.dosis.sort(f.toxoide
+      ? (a, b) => (a.estado === 'APLICADA' ? 0 : 1) - (b.estado === 'APLICADA' ? 0 : 1) || porFecha(a, b)
+      : (a, b) => orden(a) - orden(b) || porFecha(a, b)));
     return filas;
   }
 
-  /** Conteo por estado de una cartilla. */
+  /** Conteo por estado de una cartilla (la Tdpa repetida en la fila de Td no se cuenta dos veces). */
   function resumenCartilla(filas) {
     const r = { aplicadas: 0, porRegistrar: 0, atrasadas: 0, pendientes: 0, proximas: 0 };
     const campo = { APLICADA: 'aplicadas', 'FALTA REGISTRAR': 'porRegistrar', ATRASADA: 'atrasadas', PENDIENTE: 'pendientes', PROXIMA: 'proximas' };
-    (filas || []).forEach(f => f.dosis.forEach(d => { if (campo[d.estado]) r[campo[d.estado]]++; }));
+    (filas || []).forEach(f => f.dosis.forEach(d => { if (campo[d.estado] && !d.contada) r[campo[d.estado]]++; }));
     return r;
   }
 
@@ -1769,14 +1921,19 @@ function msgExp(texto, error = false) {
   m.className = 'msg ' + (error ? 'err' : 'ok');
 }
 
-async function buscarPersona() {
+let curpBuscada = '';
+/** op.abrirSiUno: búsqueda por CURP (QR o 18 caracteres) que abre el expediente si hay una sola persona. */
+async function buscarPersona(op) {
   const cont = $('#resultadosBusqueda');
   const curp = $('#bxCurp').value.trim().toUpperCase();
+  curpBuscada = curp;
+  $('#bxScanMsg').className = 'msg';
   const f = curp ? { curp } : { nombre: $('#bxNombre').value.trim(), fechaNacimiento: $('#bxNacimiento').value };
   const btn = $('#btnBuscarPersona');
   btn.disabled = true;
   try {
     const lista = await llamar('pacienteBuscar', f);
+    if (op && op.abrirSiUno === true && lista.length === 1) { cont.innerHTML = ''; return abrirExpediente(lista[0].folio); }
     cont.innerHTML = lista.length
       ? lista.map(p => `<button class="btn sec" type="button" data-exp="${esc(p.folio)}" style="width:100%;margin-top:6px;justify-content:flex-start">
           <span><b>${esc(p.nombreCompleto)}</b> · ${esc(p.curp)} · ${fechaMx(p.fechaNacimiento)}${p.estadoRegistro === 'POR CONFIRMAR' ? ' · <span class="etq PENDIENTE">por confirmar</span>' : ''}
@@ -1822,7 +1979,7 @@ function rangoDosis(x) {
 }
 
 function chipDosis(vacuna, d, captura) {
-  const detalle = d.estado === 'APLICADA' ? fechaMx(d.fecha) + (d.origen === 'PREVIA' ? ' · previa' : '')
+  const detalle = d.estado === 'APLICADA' ? fechaMx(d.fecha) + (d.origen === 'PREVIA' ? ' · previa' : '') + (d.contada ? ' · cuenta como dosis de Td' : '')
     : d.estado === 'FALTA REGISTRAR' ? 'Hay una dosis posterior capturada'
     : d.estado !== 'FUERA DE EDAD' && d.estado !== 'DESPUES' ? rangoDosis(d).replace(/^./, l => l.toUpperCase()) : '';
   const cuerpo = `<b>${esc(d.dosis)}</b><span class="cd-estado">${ESTADO_CART[d.estado] || esc(d.estado)}</span>${
@@ -1925,13 +2082,17 @@ async function abrirFormDosis(modo, vacuna, dosis) {
   caja.querySelectorAll('.dx-previa').forEach(x => { x.hidden = modo !== 'PREVIA'; });
   const anexo = anexoDeEdad(EXP.paciente.edad);
   const catalogo = CAT.vacunas.filter(v => !anexo || v.anexos.includes(anexo));
-  // Sexo y embarazo: las vacunas de embarazadas solo se ofrecen a mujeres (aplicadas hoy: con embarazo vigente).
-  const nombres = [...new Set(catalogo.map(v => v.nombre))]
-    .filter(n => !window.EsquemaCENSIA || !EsquemaCENSIA.permitida(EXP.paciente, n, modo, hoyLocalISO()));
+  // Lineamientos 2026: sexo, edad, embarazo y semana de gestación deciden qué vacunas se ofrecen (EsquemaCENSIA.permitida).
+  const motivo = n => window.EsquemaCENSIA ? EsquemaCENSIA.permitida(EXP.paciente, n, modo, hoyLocalISO(), '', EXP.vacunas) : '';
+  const todos = [...new Set(catalogo.map(v => v.nombre))];
+  const nombres = todos.filter(n => !motivo(n));
   const e = EXP.embarazo;
-  const aviso = modo === 'APLICADA' && e && e.aplica && !e.vigente;
-  $('#dxAviso').hidden = !aviso;
-  $('#dxAviso').textContent = aviso ? 'Las vacunas de embarazo (Tdpa, VSR, Td en embarazadas) aparecen al registrar el embarazo arriba.' : '';
+  // Se explica por qué no aparecen las del embarazo (sin registrar, o fuera de la semana que les toca).
+  const avisos = modo !== 'APLICADA' || !e || !e.aplica ? []
+    : !e.vigente ? ['Las vacunas de embarazo (Tdpa, VSR, Td en embarazadas) aparecen al registrar el embarazo arriba.']
+    : todos.filter(n => /embarazad/i.test(n) && motivo(n)).map(motivo);
+  $('#dxAviso').hidden = !avisos.length;
+  $('#dxAviso').textContent = avisos.join(' · ');
   $('#dxVacuna').innerHTML = nombres.map(n => `<option ${n === vacuna ? 'selected' : ''}>${esc(n)}</option>`).join('');
   $('#dxFecha').value = modo === 'PREVIA' ? '' : hoyLocalISO();
   ['#dxLoteP', '#dxCadP'].forEach(id => { $(id).value = ''; $(id).disabled = false; });
@@ -2005,6 +2166,40 @@ $('#bxCurp').addEventListener('change', e => {
   const d = CapturaCENSIA.leerQRCurp(e.target.value);
   if (d && d.curp) e.target.value = d.curp;
 });
+// CURP escrita o del lector: con 18 caracteres válidos se busca sola.
+let bxTimer;
+$('#bxCurp').addEventListener('input', e => {
+  clearTimeout(bxTimer);
+  const d = CapturaCENSIA.leerQRCurp(e.target.value);
+  if (!d || !d.curp || d.curp === curpBuscada) return;
+  bxTimer = setTimeout(() => { e.target.value = d.curp; buscarPersona({ abrirSiUno: true }); }, 250);
+});
+function msgBx(texto) {
+  $('#bxScanMsg').textContent = texto;
+  $('#bxScanMsg').className = 'msg err';
+}
+function buscarPorQR(texto) {
+  const d = CapturaCENSIA.leerQRCurp(texto);
+  if (!d || !d.curp) return false;
+  $('#bxCurp').value = d.curp;
+  $('#bxNombre').value = '';
+  $('#bxNacimiento').value = '';
+  buscarPersona({ abrirSiUno: true });
+  return true;
+}
+$('#btnBxCamara').addEventListener('click', () => LectorQR.abrir({
+  video: $('#bxCamaraVideo'), caja: $('#bxCamaraBox'), cargar: () => cargarLibreria('jsqr'),
+  alLeer: buscarPorQR, alError: msgBx
+}));
+$('#btnBxCerrarCamara').addEventListener('click', () => LectorQR.cerrar());
+$('#bxFotoQR').addEventListener('change', e => {
+  const archivo = e.target.files[0];
+  e.target.value = '';
+  if (!archivo) return;
+  LectorQR.leerFoto(archivo, () => cargarLibreria('jsqr'))
+    .then(t => { if (!buscarPorQR(t)) msgBx('No se reconoció el QR de una CURP en la foto. Intente otra foto o escriba la CURP.'); })
+    .catch(() => msgBx('No se pudo leer la foto. Intente otra o escriba la CURP.'));
+});
 $('#resultadosBusqueda').addEventListener('click', e => {
   const b = e.target.closest('button[data-exp]');
   if (b) abrirExpediente(b.dataset.exp);
@@ -2021,6 +2216,7 @@ $('#btnOtraPersona').addEventListener('click', () => {
   frm.classList.remove('con-exp');
   $('#fsExpediente').hidden = true;
   ['#bxCurp', '#bxNombre', '#bxNacimiento'].forEach(id => { $(id).value = ''; });
+  curpBuscada = '';
   $('#resultadosBusqueda').innerHTML = '';
   $('#fsBuscar').scrollIntoView({ behavior: 'smooth' });
   $('#bxCurp').focus({ preventScroll: true });
@@ -3267,6 +3463,7 @@ async function registrarEsaviUnidad() {
 
 function activarTab(nombre) {
   if (nombre !== 'captura') cerrarCamara();
+  if (window.LectorQR) LectorQR.cerrar();
   document.querySelectorAll('nav button').forEach(x => {
     const activo = x.dataset.tab === nombre;
     x.classList.toggle('activo', activo);
