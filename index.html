@@ -444,6 +444,14 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
       .opciones-check { display:flex; flex-wrap:wrap; gap:6px 16px; margin:4px 0 12px; }
       .opciones-check label { display:flex; gap:6px; align-items:center; font-size:13px; }
       .txt-err { color:#b71c1c; }
+      .es-fotos { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 12px; }
+      .es-fotos figure { margin:0; position:relative; }
+      .es-fotos img { width:110px; height:110px; object-fit:cover; border-radius:8px; border:1px solid #d0d7e2; display:block; }
+      .es-fotos.grandes img { width:auto; height:auto; max-width:min(320px, 100%); max-height:320px; object-fit:contain; }
+      .es-fotos button { position:absolute; top:4px; right:4px; border:0; border-radius:50%; background:rgba(0,0,0,.6); color:#fff; padding:2px 8px; cursor:pointer; }
+      .etq-contacto { display:inline-block; font-size:12px; font-weight:600; padding:2px 8px; border-radius:10px; background:#e6efec; color:#0C6454; white-space:nowrap; }
+      .etq-contacto.LLAMAR { background:#fdecea; color:#b71c1c; }
+      .etq-contacto.SIN { background:#fff4e5; color:#8a4b00; }
     </style>
     <div class="page-heading"><div><p class="eyebrow">VIGILANCIA POSTVACUNACIÓN</p><h2 id="heading-esavi" tabindex="-1">Seguimiento de ESAVI</h2><p class="description">Contacta por WhatsApp a quienes aceptaron seguimiento, registra eventos y controla los plazos para notificar a la DGE (graves y COVID-19: 24 h; no graves: 48 h).</p></div></div>
     <div class="filtros">
@@ -452,7 +460,7 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
     </div>
     <div id="esaviMsg" class="msg" role="status" aria-live="polite"></div>
     <fieldset id="alertasBox" hidden><legend>Alertas de ESAVI de sus unidades</legend><div id="alertasTabla" class="tabla-wrap"></div></fieldset>
-    <fieldset><legend>Por contactar hoy</legend><div id="esaviPendientes" class="tabla-wrap"><p class="hint">Cargando…</p></div></fieldset>
+    <fieldset><legend>Por contactar hoy</legend><p class="hint" id="esaviModoEnvio"></p><div id="esaviPendientes" class="tabla-wrap"><p class="hint">Cargando…</p></div></fieldset>
     <fieldset><legend>Conglomerados (2 o más casos con el mismo lote o unidad en 30 días)</legend><div id="esaviConglomerados"></div></fieldset>
     <fieldset><legend>Reportes de ESAVI</legend><div id="esaviReportes" class="tabla-wrap"></div>
       <div class="filtros" style="margin-top:12px">
@@ -479,6 +487,9 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
       </div>
       <p class="hint">Molestias</p><div id="esSintomas" class="opciones-check"></div>
       <p class="hint">Criterios de gravedad (cualquiera = ESAVI grave: notificar en 24 h)</p><div id="esCriterios" class="opciones-check"></div>
+      <p class="hint">Fotos de la molestia (opcional, máximo 2; sin la cara)</p>
+      <div class="filtros"><button class="btn sec" type="button" id="btnEsFoto">Agregar foto</button><input type="file" id="esFoto" accept="image/*" hidden></div>
+      <div id="esFotos" class="es-fotos"></div>
       <button class="btn" type="button" id="btnEsavi" onclick="registrarEsaviUnidad()">Registrar ESAVI</button>
     </fieldset>
   </section>
@@ -1470,6 +1481,71 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
   raiz.LectorQR = { abrir, cerrar, leerFoto };
   if (typeof window !== 'undefined') window.addEventListener('pagehide', cerrar);
 })(this);
+
+/* Reduce una foto en el celular antes de enviarla (encuesta ESAVI y registro en la unidad):
+ * lado mayor ≤ 1280 px y JPEG de ~300 KB como máximo. Sin dependencias (canvas del navegador).
+ * window.ReducirFoto.reducir(archivo) → Promise<{ tipo, datos (base64 sin prefijo), bytes, url }>
+ * El servidor vuelve a revisar tipo y tamaño (EsaviCENSIA.revisarFotos).
+ */
+(function (raiz) {
+  const LADO = 1280;
+  const BYTES_MAX = 300 * 1024;
+
+  function cargarImagen(archivo) {
+    if (window.createImageBitmap) {
+      return createImageBitmap(archivo, { imageOrientation: 'from-image' }).catch(() => cargarConImg(archivo));
+    }
+    return cargarConImg(archivo);
+  }
+
+  function cargarConImg(archivo) {
+    return new Promise((ok, mal) => {
+      const url = URL.createObjectURL(archivo);
+      const img = new Image();
+      img.onload = () => { URL.revokeObjectURL(url); ok(img); };
+      img.onerror = () => { URL.revokeObjectURL(url); mal(new Error('No se pudo leer la foto')); };
+      img.src = url;
+    });
+  }
+
+  const aBlob = (canvas, calidad) => new Promise(ok => canvas.toBlob(ok, 'image/jpeg', calidad));
+
+  const aBase64 = blob => new Promise((ok, mal) => {
+    const lector = new FileReader();
+    lector.onload = () => ok(String(lector.result));
+    lector.onerror = () => mal(new Error('No se pudo leer la foto'));
+    lector.readAsDataURL(blob);
+  });
+
+  async function reducir(archivo) {
+    if (!archivo || !/^image\//.test(archivo.type || 'image/')) throw new Error('El archivo no es una foto');
+    const img = await cargarImagen(archivo);
+    const ancho = img.width, alto = img.height;
+    if (!ancho || !alto) throw new Error('No se pudo leer la foto');
+    let lado = LADO;
+    for (let intento = 0; intento < 6; intento++) {
+      const escala = Math.min(1, lado / Math.max(ancho, alto));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(ancho * escala);
+      canvas.height = Math.round(alto * escala);
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';  // PNG con transparencia → fondo blanco
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      for (const calidad of [0.8, 0.65, 0.5]) {
+        const blob = await aBlob(canvas, calidad);
+        if (blob && blob.size <= BYTES_MAX) {
+          const url = await aBase64(blob);
+          return { tipo: 'image/jpeg', datos: url.split(',')[1], bytes: blob.size, url };
+        }
+      }
+      lado = Math.round(lado * 0.75);
+    }
+    throw new Error('No se pudo reducir la foto; intente con otra');
+  }
+
+  raiz.ReducirFoto = { reducir, LADO, BYTES_MAX };
+})(typeof window !== 'undefined' ? window : this);
 
 </script>
 
@@ -3211,17 +3287,60 @@ async function cargarEsavi() {
   }
 }
 
+const ETIQUETA_CONTACTO = { ENVIAR: 'Enviar WhatsApp', LLAMAR: 'Llamar: no le llegó el WhatsApp', 'SIN RESPUESTA': 'Sin respuesta: llamar' };
+
 function pintarPendientesEsavi(lista) {
   const cont = $('#esaviPendientes');
+  const automatico = lista.length && lista[0].automatico;
+  $('#esaviModoEnvio').textContent = !lista.length ? '' : automatico
+    ?'Los WhatsApp se envían solos todos los días a las 10:00. Aquí quedan quienes no recibieron el mensaje o no contestaron en 3 días: llámeles y anote el resultado.'
+    : 'Envíe el WhatsApp con el botón (el envío automático aún no está activo). Si no contestan en 3 días, aparecen aquí para llamarles.';
+  const accion = (p, i) => {
+    if (p.tipo === 'ENVIAR') {
+      if (p.automatico) return '<span class="hint">Se envía hoy a las 10:00</span>';
+      return p.url ? `<button class="btn sec" type="button" data-enviar="${i}">Enviar WhatsApp</button>` : '<span class="hint">Teléfono no válido: llamar</span>';
+    }
+    return `<select data-llamada="${i}" aria-label="Resultado de la llamada">
+        <option value="">Resultado de la llamada…</option>
+        <option>SIN MOLESTIAS</option><option>REPORTO MOLESTIAS</option><option>NO LOCALIZABLE</option>
+      </select>${p.tipo === 'SIN RESPUESTA' && p.url ? ` <a class="btn sec" href="${p.url}" target="_blank" rel="noopener">Reenviar por WhatsApp</a>` : ''}`;
+  };
   cont.innerHTML = lista.length
-    ? `<table><thead><tr><th>Contacto</th><th>Nombre</th><th>Vacunación</th><th>Teléfono</th><th></th></tr></thead><tbody>${
+    ? `<table><thead><tr><th>Qué hacer</th><th>Nombre</th><th>Vacunación</th><th>Teléfono</th><th></th></tr></thead><tbody>${
       lista.map((p, i) => `<tr>
-        <td>${p.dia === 1 ? 'Día 3' : 'Final'}</td><td>${esc(p.nombre)}</td>
-        <td>${esc(p.fecha)} · ${esc(p.vacunas.join(', '))}</td><td>${esc(p.telefono)}</td>
-        <td>${p.url ? `<button class="btn sec" type="button" data-i="${i}">Enviar WhatsApp</button>` : '<span class="hint">Teléfono no válido</span>'}</td>
+        <td><span class="etq-contacto ${esc(p.tipo.split(' ')[0])}">${esc(ETIQUETA_CONTACTO[p.tipo] || p.tipo)}</span><br>
+          <small>${p.dia === 1 ? 'Contacto del día 3' : 'Contacto final'}${p.error ? ' · ' + esc(p.error) : ''}</small></td>
+        <td>${esc(p.nombre)}<br><small>${esc(p.folio)}</small></td>
+        <td>${esc(p.fecha)} · ${esc(p.vacunas.join(', '))}</td>
+        <td>${p.telefono ? `<a href="tel:${esc(String(p.telefono).replace(/[^\d+]/g, ''))}">${esc(p.telefono)}</a>` : ''}</td>
+        <td>${accion(p, i)}</td>
       </tr>`).join('')}</tbody></table>`
     : '<p class="hint">No hay contactos pendientes hoy.</p>';
-  cont.querySelectorAll('button[data-i]').forEach(b => { b.onclick = () => enviarWhatsApp(lista[+b.dataset.i], b); });
+  cont.querySelectorAll('button[data-enviar]').forEach(b => { b.onclick = () => enviarWhatsApp(lista[+b.dataset.enviar], b); });
+  cont.querySelectorAll('select[data-llamada]').forEach(s => { s.onchange = () => registrarLlamada(lista[+s.dataset.llamada], s); });
+}
+
+async function registrarLlamada(p, sel) {
+  const resultado = sel.value;
+  if (!resultado) return;
+  sel.disabled = true;
+  try {
+    const r = await llamar('esaviRegistrarLlamada', p.token, resultado);
+    if (resultado === 'REPORTO MOLESTIAS') {
+      // Se registra el ESAVI con el formulario de abajo, con el folio ya escrito.
+      $('#esFolio').value = r.folio;
+      $('#esTel').value = p.telefono || '';
+      msgEsavi('Llamada anotada. Registre ahora las molestias de ' + p.nombre + ' en "Registrar ESAVI reportado en la unidad".');
+      $('#esFolio').closest('fieldset').scrollIntoView({ behavior: 'smooth' });
+      $('#esInicio').focus();
+    } else {
+      msgEsavi('Llamada anotada: ' + resultado.toLowerCase() + '.');
+    }
+    cargarEsavi();
+  } catch (e) {
+    sel.disabled = false;
+    msgEsavi(e.message, true);
+  }
 }
 
 async function enviarWhatsApp(p, boton) {
@@ -3274,12 +3393,15 @@ function pintarReportesEsavi(r) {
         <td><input class="es-folio" value="${esc(e.folioDGE)}" size="10"></td>
         <td><select class="es-dictamen"><option value=""></option>${opciones(r.dictamenes, e.dictamen)}</select></td>
         <td><button class="btn sec es-guardar" type="button">Guardar</button> <a class="btn sec" href="${correoEsavi(e)}">Avisar por correo</a>
-          <button class="btn sec es-estudio" type="button">Estudio${e.estudio ? ' (' + esc(e.estudio) + ')' : ''}</button></td>
-      </tr>`).join('')}</tbody></table>`
+          <button class="btn sec es-estudio" type="button">Estudio${e.estudio ? ' (' + esc(e.estudio) + ')' : ''}</button>
+          ${e.fotos ? `<button class="btn sec es-ver-fotos" type="button">Fotos (${e.fotos})</button>` : ''}</td>
+      </tr>${e.fotos ? `<tr class="es-fila-fotos" hidden><td colspan="10"><div class="es-fotos grandes"></div></td></tr>` : ''}`).join('')}</tbody></table>`
     : '<p class="hint">Sin reportes de ESAVI.</p>';
   cont.querySelectorAll('tr[data-i]').forEach(tr => {
     const e = r.reportes[+tr.dataset.i];
     tr.querySelector('.es-estudio').onclick = () => abrirEstudio(e.id);
+    const btnFotos = tr.querySelector('.es-ver-fotos');
+    if (btnFotos) btnFotos.onclick = () => verFotosEsavi(e.id, tr.nextElementSibling, btnFotos);
     tr.querySelector('.es-guardar').onclick = async () => {
       const estatus = tr.querySelector('.es-estatus').value;
       const cambios = { estatus, folioDGE: tr.querySelector('.es-folio').value.trim(), dictamen: tr.querySelector('.es-dictamen').value };
@@ -3294,6 +3416,52 @@ function pintarReportesEsavi(r) {
     };
   });
 }
+
+/** Muestra u oculta las fotos del reporte (se piden al servidor solo la primera vez). */
+async function verFotosEsavi(id, fila, btn) {
+  const caja = fila.querySelector('.es-fotos');
+  if (!fila.hidden) { fila.hidden = true; return; }
+  fila.hidden = false;
+  if (caja.dataset.cargado) return;
+  btn.disabled = true;
+  caja.innerHTML = '<p class="hint">Cargando fotos…</p>';
+  try {
+    const fotos = await llamar('esaviFotos', id);
+    caja.innerHTML = fotos.map((f, i) => `<figure><img alt="Foto ${i + 1} del reporte ${esc(id)}" src="data:${esc(f.tipo)};base64,${f.datos}"></figure>`).join('')
+      || '<p class="hint">Sin fotos.</p>';
+    caja.dataset.cargado = '1';
+  } catch (e) {
+    caja.innerHTML = '';
+    fila.hidden = true;
+    msgEsavi(e.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* Fotos del registro en la unidad (se reducen en el navegador: motor/fotos.js). */
+const ES_FOTOS = [];
+function pintarFotosUnidad() {
+  $('#esFotos').innerHTML = ES_FOTOS.map((f, i) =>
+    `<figure><img src="${f.url}" alt="Foto ${i + 1}"><button type="button" data-quitar="${i}" aria-label="Quitar foto ${i + 1}">×</button></figure>`).join('');
+  $('#btnEsFoto').disabled = ES_FOTOS.length >= 2;
+}
+$('#btnEsFoto').addEventListener('click', () => $('#esFoto').click());
+$('#esFoto').addEventListener('change', async () => {
+  const archivo = $('#esFoto').files[0];
+  $('#esFoto').value = '';
+  if (!archivo || ES_FOTOS.length >= 2) return;
+  try {
+    ES_FOTOS.push(await ReducirFoto.reducir(archivo));
+    pintarFotosUnidad();
+  } catch (e) { msgEsavi(e.message, true); }
+});
+$('#esFotos').addEventListener('click', ev => {
+  const b = ev.target.closest('button[data-quitar]');
+  if (!b) return;
+  ES_FOTOS.splice(+b.dataset.quitar, 1);
+  pintarFotosUnidad();
+});
 
 /* ---------- Alertas de ESAVI (servidor: Alertas.js) ---------- */
 async function cargarAlertas() {
@@ -3508,9 +3676,13 @@ async function registrarEsaviUnidad() {
   try {
     const r = await llamar('esaviRegistrarUnidad', folio, {
       sintomas: marcados('es-s'), criterios: marcados('es-c'), fechaInicio: $('#esInicio').value,
-      telefono: $('#esTel').value, descripcion: $('#esDesc').value
+      telefono: $('#esTel').value, descripcion: $('#esDesc').value,
+      fotos: ES_FOTOS.map(f => ({ tipo: f.tipo, datos: f.datos }))
     });
-    msgEsavi(`ESAVI ${r.id} registrado${r.grave ? ' como GRAVE' : ''}. Notificar a la DGE antes de ${r.limite}.`);
+    const avisoFotos = ES_FOTOS.length && !r.fotos ? ' Las fotos no se pudieron guardar.' : '';
+    msgEsavi(`ESAVI ${r.id} registrado${r.grave ? ' como GRAVE' : ''}. Notificar a la DGE antes de ${r.limite}.${avisoFotos}`, !!avisoFotos);
+    ES_FOTOS.length = 0;
+    pintarFotosUnidad();
     ['#esFolio', '#esInicio', '#esTel', '#esDesc'].forEach(s => { $(s).value = ''; });
     document.querySelectorAll('.es-s, .es-c').forEach(x => { x.checked = false; });
     cargarEsavi();

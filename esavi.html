@@ -30,12 +30,83 @@
   .ok { background:#e8f5e9; color:#2e7d32; border-radius:10px; padding:14px; }
   .oculto { display:none; }
   small { color:#5b6770; }
+  .fotos { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+  .fotos figure { margin:0; position:relative; }
+  .fotos img { width:120px; height:120px; object-fit:cover; border-radius:8px; border:1px solid var(--borde); display:block; }
+  .fotos button { position:absolute; top:4px; right:4px; padding:2px 9px; background:rgba(0,0,0,.6); color:#fff; border-radius:50%; font-size:15px; }
 </style>
+<script>
+/* Reduce una foto en el celular antes de enviarla (encuesta ESAVI y registro en la unidad):
+ * lado mayor ≤ 1280 px y JPEG de ~300 KB como máximo. Sin dependencias (canvas del navegador).
+ * window.ReducirFoto.reducir(archivo) → Promise<{ tipo, datos (base64 sin prefijo), bytes, url }>
+ * El servidor vuelve a revisar tipo y tamaño (EsaviCENSIA.revisarFotos).
+ */
+(function (raiz) {
+  const LADO = 1280;
+  const BYTES_MAX = 300 * 1024;
+
+  function cargarImagen(archivo) {
+    if (window.createImageBitmap) {
+      return createImageBitmap(archivo, { imageOrientation: 'from-image' }).catch(() => cargarConImg(archivo));
+    }
+    return cargarConImg(archivo);
+  }
+
+  function cargarConImg(archivo) {
+    return new Promise((ok, mal) => {
+      const url = URL.createObjectURL(archivo);
+      const img = new Image();
+      img.onload = () => { URL.revokeObjectURL(url); ok(img); };
+      img.onerror = () => { URL.revokeObjectURL(url); mal(new Error('No se pudo leer la foto')); };
+      img.src = url;
+    });
+  }
+
+  const aBlob = (canvas, calidad) => new Promise(ok => canvas.toBlob(ok, 'image/jpeg', calidad));
+
+  const aBase64 = blob => new Promise((ok, mal) => {
+    const lector = new FileReader();
+    lector.onload = () => ok(String(lector.result));
+    lector.onerror = () => mal(new Error('No se pudo leer la foto'));
+    lector.readAsDataURL(blob);
+  });
+
+  async function reducir(archivo) {
+    if (!archivo || !/^image\//.test(archivo.type || 'image/')) throw new Error('El archivo no es una foto');
+    const img = await cargarImagen(archivo);
+    const ancho = img.width, alto = img.height;
+    if (!ancho || !alto) throw new Error('No se pudo leer la foto');
+    let lado = LADO;
+    for (let intento = 0; intento < 6; intento++) {
+      const escala = Math.min(1, lado / Math.max(ancho, alto));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(ancho * escala);
+      canvas.height = Math.round(alto * escala);
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';  // PNG con transparencia → fondo blanco
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      for (const calidad of [0.8, 0.65, 0.5]) {
+        const blob = await aBlob(canvas, calidad);
+        if (blob && blob.size <= BYTES_MAX) {
+          const url = await aBase64(blob);
+          return { tipo: 'image/jpeg', datos: url.split(',')[1], bytes: blob.size, url };
+        }
+      }
+      lado = Math.round(lado * 0.75);
+    }
+    throw new Error('No se pudo reducir la foto; intente con otra');
+  }
+
+  raiz.ReducirFoto = { reducir, LADO, BYTES_MAX };
+})(typeof window !== 'undefined' ? window : this);
+
+</script>
 </head>
 <body>
 <header>
   <h1>Seguimiento de su vacunación</h1>
-  <p>Jurisdicción Sanitaria XIX Texcoco · Programa de Vacunación Universal</p>
+  <p id="subtitulo">Programa de Vacunación Universal</p>
 </header>
 <main>
   <div id="cargando" class="tarjeta">Cargando…</div>
@@ -66,6 +137,15 @@
     <div class="tarjeta">
       <label class="campo">Teléfono para comunicarnos con usted <input id="telefono" inputmode="tel" autocomplete="tel"></label>
       <label class="campo">Cuéntenos brevemente qué pasó (opcional) <textarea id="descripcion" maxlength="500" rows="3"></textarea></label>
+    </div>
+    <div class="tarjeta">
+      <p><b>Foto de la molestia</b> (opcional)<br><small>Si hay enrojecimiento, hinchazón, granos o ronchas, una foto ayuda al personal de salud. Máximo <span id="fotosMax">2</span>. No incluya la cara.</small></p>
+      <div class="botones"><button class="secundario" type="button" id="btnFoto">Agregar foto</button></div>
+      <input type="file" id="foto" accept="image/*" class="oculto">
+      <div id="fotos" class="fotos"></div>
+      <p id="fotoMsg" class="oculto"><small></small></p>
+    </div>
+    <div class="tarjeta">
       <div class="botones"><button class="principal" type="submit" id="btnEnviar">Enviar reporte</button></div>
     </div>
   </form>
@@ -109,6 +189,9 @@ function terminar(html) {
       return terminar('<p>El periodo de seguimiento de esta vacuna ya terminó. Si tiene alguna molestia, acuda a su unidad de salud.</p>');
     }
     $('#aplicadas').innerHTML = `Vacunas aplicadas el <b>${fechaCorta(info.fecha)}</b>: ${esc(info.vacunas.join(', '))}.`;
+    if (info.unidad) $('#subtitulo').textContent = info.unidad + ' · Programa de Vacunación Universal';
+    FOTOS_MAX = info.fotosMax || 2;
+    $('#fotosMax').textContent = FOTOS_MAX;
     ver('#nota', !!info.respondida);
     const casillas = (lista, clase) => lista.map(x => `<label class="op"><input type="checkbox" class="${clase}" value="${esc(x)}"> <span>${esc(x.charAt(0) + x.slice(1).toLowerCase())}</span></label>`).join('');
     $('#sintomas').innerHTML = casillas(info.sintomas, 's');
@@ -131,22 +214,65 @@ $('#btnNo').onclick = async () => {
 
 $('#btnSi').onclick = () => { ver('#pregunta', false); ver('#detalle', true); };
 
+/* ---------- Fotos (opcionales): se reducen en el celular antes de enviarse ---------- */
+let FOTOS_MAX = 2;
+const FOTOS = [];
+
+function pintarFotos() {
+  $('#fotos').innerHTML = FOTOS.map((f, i) =>
+    `<figure><img src="${f.url}" alt="Foto ${i + 1} de la molestia"><button type="button" data-quitar="${i}" aria-label="Quitar foto ${i + 1}">×</button></figure>`).join('');
+  $('#btnFoto').disabled = FOTOS.length >= FOTOS_MAX;
+  $('#btnFoto').textContent = FOTOS.length ? 'Agregar otra foto' : 'Agregar foto';
+}
+
+function avisoFoto(texto) {
+  $('#fotoMsg small').textContent = texto;
+  ver('#fotoMsg', !!texto);
+}
+
+$('#btnFoto').onclick = () => $('#foto').click();
+$('#foto').onchange = async () => {
+  const archivo = $('#foto').files[0];
+  $('#foto').value = '';
+  if (!archivo || FOTOS.length >= FOTOS_MAX) return;
+  avisoFoto('Preparando la foto…');
+  $('#btnFoto').disabled = true;
+  try {
+    FOTOS.push(await ReducirFoto.reducir(archivo));
+    avisoFoto('');
+  } catch (e) {
+    avisoFoto(e.message);
+  }
+  pintarFotos();
+};
+$('#fotos').onclick = ev => {
+  const b = ev.target.closest('button[data-quitar]');
+  if (!b) return;
+  FOTOS.splice(+b.dataset.quitar, 1);
+  pintarFotos();
+};
+
 $('#detalle').onsubmit = async ev => {
   ev.preventDefault();
   const marcados = clase => [...document.querySelectorAll('.' + clase + ':checked')].map(x => x.value);
   const datos = { molestias: true, sintomas: marcados('s'), criterios: marcados('c'), fechaInicio: $('#inicio').value,
-    telefono: $('#telefono').value, descripcion: $('#descripcion').value };
+    telefono: $('#telefono').value, descripcion: $('#descripcion').value,
+    fotos: FOTOS.map(f => ({ tipo: f.tipo, datos: f.datos })) };
   if (!datos.sintomas.length && !datos.criterios.length) return alert('Marque al menos una molestia.');
   $('#btnEnviar').disabled = true;
+  $('#btnEnviar').textContent = FOTOS.length ? 'Enviando reporte y fotos…' : 'Enviando…';
   try {
     const r = await llamar('encuestaResponder', token, datos);
+    const fotosPerdidas = FOTOS.length && !r.fotos;
     terminar((r.grave
       ? '<p class="alerta">Por lo que nos indica, acuda de inmediato a su unidad de salud o a urgencias.</p>'
       : '<p class="ok">Gracias, su reporte quedó registrado.</p>') +
+      (fotosPerdidas ? '<p><small>Su reporte quedó registrado, pero las fotos no se pudieron guardar. Si el personal las necesita, se las pedirá.</small></p>' : '') +
       '<p>El personal de salud revisará su reporte y se comunicará con usted si es necesario.</p>' +
       '<p><small>Si tiene fiebre muy alta, convulsiones o dificultad para respirar, acuda a urgencias sin esperar.</small></p>');
   } catch (e) {
     $('#btnEnviar').disabled = false;
+    $('#btnEnviar').textContent = 'Enviar reporte';
     alert(e.message);
   }
 };
