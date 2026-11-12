@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es">
+<head>
+<script>window.API_CENSIA = "https://script.google.com/macros/s/AKfycbxYr4pUuz1Modhvhk4s8EvthEkN7upYnMMhzeQlfGkABLzWkx52XVit_bYkwYx4kipK/exec";</script>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Captura guiada de antecedentes de vacunación</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f6f4;color:#243a33;font:17px/1.5 system-ui,sans-serif}header{background:#075b4d;color:white;padding:20px}header div,main{max-width:600px;margin:auto}h1{font-size:23px;margin:0}main{padding:16px}.tarjeta{padding:18px;background:white;border:1px solid #d4dfd9;border-radius:14px;margin-bottom:16px}h2{font-size:19px;margin:0 0 10px}label{display:block;margin:14px 0}input,select,button{font:inherit;min-height:48px;border:1px solid #b5c6bd;border-radius:9px;padding:9px;width:100%;background:white;color:inherit}button{cursor:pointer;background:#075b4d;color:white;font-weight:700}button:disabled{opacity:.55}.op{display:flex;align-items:flex-start;gap:12px}.op input{width:24px;min-height:24px;flex:none;margin-top:2px}.ayuda{font-size:14px;color:#52665d}.error{color:#8b251a;background:#fff0ec;padding:12px}.ok{background:#e5f3e9;padding:12px}a{color:#075b4d}input:focus,select:focus,button:focus{outline:3px solid #33859b80}ul{padding-left:22px}[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header><div><h1>Captura guiada de vacunación</h1><p>Datos y antecedentes para revisión por el personal de salud</p></div></header>
+<main>
+<div id="mensaje" class="tarjeta" role="status" aria-live="polite">Verificando su comprobante…</div>
+<section id="persona" class="tarjeta" hidden><h2>Su registro</h2><p id="nombre"></p><p id="identidad" class="ayuda"></p><p class="ayuda">Estos datos se precargaron con su comprobante vigente. Si requiere corregirlos, solicítelo al personal. No necesita un expediente nuevo.</p></section>
+<section id="orientacion" class="tarjeta" hidden>
+<h2>Antes de continuar</h2><p>Continúe con la captura si recibió orientación previa del personal de salud.</p>
+<label class="op"><input type="checkbox" id="orientado"> Confirmo que recibí orientación del personal de salud para llenar esta captura.</label>
+<p class="ayuda">Si aún no recibió orientación, su registro ya está guardado. Acuda a su unidad con su cartilla, si la tiene. El personal registrará las vacunas que le aplique.</p>
+</section>
+<form id="antecedentes" class="tarjeta" hidden>
+<h2>Vacuna que ya tenía</h2><p class="ayuda">Puede registrar lo que recuerda o transcribir su cartilla. Los datos desconocidos pueden quedar vacíos. El personal revisará esta información antes de tomar decisiones sobre su esquema.</p>
+<label>Vacuna <select id="vacuna" required></select></label>
+<label>Dosis <select id="dosis"><option value="">No se conoce</option></select></label>
+<label>¿De dónde toma el dato? <select id="fuente" required><option value="">Seleccione…</option><option value="CARTILLA">Lo transcribo de la cartilla</option><option value="REFERIDA">Lo refiere el paciente o responsable</option></select></label>
+<label>Fecha que conoce <select id="precision"><option value="DESCONOCIDA">No conoce la fecha</option><option value="EXACTA">Conoce día, mes y año</option><option value="MES">Solo mes y año</option><option value="ANIO">Solo año</option></select></label>
+<label id="fechaCampo" hidden>Fecha de aplicación <input id="fecha" type="date"></label>
+<label>Lote, si consta <input id="lote" maxlength="60" autocomplete="off"></label>
+<label>Caducidad, si consta <input id="caducidad" type="date"></label>
+<label>¿Dónde se la aplicaron?, si lo conoce <input id="lugar" maxlength="150" placeholder="Otra unidad, jornada de vacunación…"></label>
+<p class="ayuda">No se solicita el nombre de quien aplicó una vacuna previa. Esta captura no registra una aplicación nueva.</p>
+<button id="guardar" type="submit">Enviar antecedente para revisión</button>
+</form>
+<section id="enviados" class="tarjeta" hidden><h2>Antecedentes enviados en esta sesión</h2><ul id="lista"></ul><p class="ayuda">Quedaron pendientes de revisión. Presente su cartilla al personal. Las vacunas que se apliquen hoy las registra el personal con la fecha y los datos del biológico.</p></section>
+<button id="terminar" type="button" hidden>Terminar y cerrar mi captura</button>
+<p><a href="registro.html" id="otraPersona">Registrar a otra persona</a></p>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const llamar = (fn, ...args) => fetch(window.API_CENSIA, {method:'POST', credentials:'omit', redirect:'follow',
+  headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({fn,args})}).then(r => r.json()).then(r => {if(!r.ok) throw new Error(r.error); return r.valor;});
+const fragmento = window.location.hash.slice(1);
+if(fragmento) {sessionStorage.setItem('censiaCapturaPaciente',fragmento); history.replaceState(null,'',window.location.pathname);}
+const token = sessionStorage.getItem('censiaCapturaPaciente') || '';
+let catalogo = [], solicitud = crypto.randomUUID();
+function mensaje(texto,error=false){$('#mensaje').textContent=texto;$('#mensaje').className='tarjeta '+(error?'error':'ok');}
+function dosis(){const v=catalogo.find(x=>x.nombre===$('#vacuna').value);$('#dosis').replaceChildren(new Option('No se conoce',''));(v?v.dosis:[]).forEach(x=>$('#dosis').add(new Option(x,x)));}
+$('#vacuna').addEventListener('change',dosis);
+$('#orientado').addEventListener('change',()=>{$('#antecedentes').hidden=!$('#orientado').checked;});
+$('#precision').addEventListener('change',()=>{const p=$('#precision').value,f=$('#fecha');$('#fechaCampo').hidden=p==='DESCONOCIDA';f.value='';f.type=p==='MES'?'month':p==='ANIO'?'number':'date';f.removeAttribute('min');f.removeAttribute('max');if(p==='ANIO'){f.min='1900';f.max=String(new Date().getFullYear());f.placeholder='AAAA';}});
+$('#otraPersona').addEventListener('click',()=>{sessionStorage.removeItem('censiaCapturaPaciente');sessionStorage.removeItem('censiaEnvioPaciente');});
+$('#terminar').addEventListener('click',async()=>{$('#terminar').disabled=true;try{await llamar('capturaPacienteCerrar',token);sessionStorage.removeItem('censiaCapturaPaciente');sessionStorage.removeItem('censiaEnvioPaciente');$('#antecedentes').hidden=true;$('#orientacion').hidden=true;$('#persona').hidden=true;$('#terminar').hidden=true;mensaje('Su captura quedó cerrada. Presente su cartilla al personal de salud para la revisión y aplicación que corresponda.');}catch(err){mensaje(err.message,true);$('#terminar').disabled=false;}});
+$('#antecedentes').addEventListener('submit',async e=>{e.preventDefault();if(!$('#orientado').checked){mensaje('Confirme que recibió orientación previa.',true);return;}
+  const datos={vacuna:$('#vacuna').value,dosis:$('#dosis').value,fuente:$('#fuente').value,fecha:$('#precision').value==='DESCONOCIDA'?'':$('#fecha').value,
+    lote:$('#lote').value,caducidad:$('#caducidad').value,lugarAplicacion:$('#lugar').value,orientacion:true,solicitud};
+  if($('#precision').value!=='DESCONOCIDA'&&!datos.fecha){mensaje('Escriba la fecha que conoce o seleccione que no la conoce.',true);return;}
+  $('#guardar').disabled=true;try{await llamar('capturaPacienteAntecedente',token,datos);solicitud=crypto.randomUUID();const li=document.createElement('li');li.textContent=datos.vacuna+' · '+(datos.dosis||'dosis desconocida')+' · '+(datos.fecha||'sin fecha')+' · pendiente de revisión';$('#lista').appendChild(li);$('#enviados').hidden=false;$('#antecedentes').reset();dosis();$('#fechaCampo').hidden=true;mensaje('Antecedente recibido. Puede registrar otro si lo necesita.');}
+  catch(err){mensaje(err.message,true);}finally{$('#guardar').disabled=false;}});
+(async()=>{try{const r=await llamar('capturaPacienteInfo',token);catalogo=r.vacunas;$('#vacuna').add(new Option('Seleccione…',''));catalogo.forEach(v=>$('#vacuna').add(new Option(v.nombre,v.nombre)));dosis();const p=r.paciente;$('#nombre').textContent=[p.paterno,p.materno,p.nombre||(p.nombrePendiente==='SI'?'Nombre pendiente':'')].filter(Boolean).join(' ');$('#identidad').textContent='Nacimiento: '+p.fechaNacimiento+' · '+(p.curp==='SIN CURP'?'CURP pendiente':p.curp)+' · Servicio: '+p.derechohabiencia;$('#persona').hidden=false;$('#orientacion').hidden=false;$('#terminar').hidden=false;mensaje('Registro recibido. Continúe después de la orientación del personal.');}
+catch(err){mensaje(err.message,true);$('#antecedentes').hidden=true;$('#orientacion').hidden=true;}})();
+</script>
+</body>
+</html>

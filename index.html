@@ -28,6 +28,8 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
 @media(min-width:1200px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}}@media(max-width:1023px){.header-inner{align-items:flex-start;flex-direction:column;gap:20px;padding:22px 28px}nav{width:100%;justify-content:space-between}nav button{justify-content:center;flex:1;padding:10px}.brand-inner{padding:20px 28px}.banner img{height:54px}main{padding:30px 28px 48px}.page-heading h2{font-size:28px}}
 @media(max-width:600px){.brand-inner{padding:16px 18px 12px}.banner{grid-template-columns:repeat(3,minmax(0,1fr));min-height:48px;gap:14px 18px}.banner img{height:38px;max-width:100%}.institution-caption{font-size:8px;letter-spacing:.13em;margin-top:10px}.header-inner{padding:20px 18px;gap:20px}.app-identity h1{font-size:19px}.app-identity p{font-size:10px}.app-mark{width:40px;height:40px;border-radius:10px}nav{gap:2px;padding:4px}nav button{flex-direction:column;gap:4px;font-size:10px;padding:8px 5px;min-height:52px}nav button svg{width:18px;height:18px}main{padding:26px 16px 36px}.page-heading{align-items:flex-start;flex-direction:column;gap:14px;margin-bottom:22px}.page-heading h2{font-size:28px}.page-heading .description{font-size:13px;line-height:1.6}.service-state{font-size:11px;padding:7px 11px}.barra{gap:10px}.barra .btn{font-size:11px;padding:10px 12px}.grid{grid-template-columns:1fr;gap:18px}.campo.ancho{grid-column:auto}fieldset{padding:20px 16px;margin-bottom:22px;border-radius:13px}legend{font-size:14px;gap:10px;margin-bottom:22px}input,select,textarea{font-size:16px;min-height:48px}.escaneo{padding:14px;gap:10px;margin-bottom:22px}.escaneo .campo{min-width:0;flex-basis:100%}.escaneo .btn{flex:1;font-size:12px;padding:10px;min-height:46px}.dosis{grid-template-columns:1fr 1fr;gap:10px}.dosis input{font-size:14px}.dosis label.marca{font-size:12px}.vac{padding:8px 12px}.app-footer{padding:0 18px 24px;flex-direction:column;gap:4px}.filtros{padding:14px}.cards{grid-template-columns:1fr 1fr;gap:12px}.card{padding:18px;font-size:10px}.card b{font-size:30px}.brand-placeholder{font-size:9px;letter-spacing:.04em;gap:8px}.brand-placeholder span{width:50px;height:24px}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*:before,*:after{animation:none!important;transition:none!important}}
+.etq.REVISION,.cd.REVISION{background:#fff4e5;color:#784c0a;border-color:#dfbd84}
+[hidden]{display:none!important}
 </style>
 
 </head>
@@ -132,13 +134,24 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
             <div class="campo">Vacuna <select id="dxVacuna"></select></div>
             <div class="campo">Dosis <select id="dxDosis"></select></div>
             <div class="campo">Fecha <input type="date" id="dxFecha"></div>
+            <div class="campo dx-previa"><label><input type="checkbox" id="dxFechaNc"> No conoce la fecha de aplicación</label></div>
             <div class="campo dx-aplicada">Lote <select id="dxLote"></select></div>
             <div class="campo" id="dxLoteOtroCampo" hidden>Lote (como viene en el frasco) <input id="dxLoteOtro" autocomplete="off" spellcheck="false" maxlength="30" placeholder="P. ej. A23B045"></div>
             <div class="campo dx-aplicada">Caducidad <input id="dxCaducidad" readonly></div>
             <div class="campo dx-aplicada">¿Quién aplicó? <select id="dxVacunador"></select></div>
-            <div class="campo dx-previa">Fuente <select id="dxFuente"><option value="">Seleccione…</option><option>CARTILLA</option><option>OTRA INSTITUCIÓN</option><option>REFERIDA</option></select></div>
-            <div class="campo dx-previa">Lote de esa dosis <input id="dxLoteP" autocomplete="off"><label class="hint"><input type="checkbox" id="dxLotePNc"> No consta</label></div>
-            <div class="campo dx-previa">Caducidad de esa dosis <input type="date" id="dxCadP"><label class="hint"><input type="checkbox" id="dxCadPNc"> No consta</label></div>
+            <div class="campo dx-previa">Fuente <select id="dxFuente"><option value="">Seleccione…</option><option value="CARTILLA">Confirmada mediante cartilla</option><option value="REFERIDA">Referida por paciente o tutor</option></select></div>
+            <div class="campo dx-previa">Lugar donde se aplicó (si lo conoce) <input id="dxLugarP" placeholder="Otra unidad, jornada o desconocido"></div>
+            <div class="campo dx-previa">Lote de esa dosis (opcional) <input id="dxLoteP" autocomplete="off"><label class="hint"><input type="checkbox" id="dxLotePNc"> No consta</label></div>
+            <div class="campo dx-previa">Caducidad de esa dosis (opcional) <input type="date" id="dxCadP"><label class="hint"><input type="checkbox" id="dxCadPNc"> No consta</label></div>
+            <div class="campo dx-aplicada" id="dxProductoCampo" hidden>Presentación COVID <select id="dxProducto"><option value="">Seleccione…</option></select></div>
+            <div class="campo dx-aplicada">Lugar o jornada (si corresponde) <input id="dxLugar" placeholder="Sede de aplicación"></div>
+          </div>
+          <div id="dxRiesgo" hidden>
+            <div class="campo">¿Tiene comorbilidades? <select id="dxTieneComorbilidades"><option value="">Seleccione…</option><option value="SI">Sí</option><option value="NO">No</option><option value="NO SABE">No sabe</option></select></div>
+            <div id="dxComorbilidades" class="grid" hidden></div>
+            <label><input type="checkbox" id="dxPersonalSalud"> Es personal de salud</label>
+            <div class="campo">Grupo principal para el informe (si coinciden varios) <select id="dxGrupoReporte"><option value="">Clasificación automática si es inequívoca</option></select></div>
+            <p class="hint">El personal confirma los criterios de riesgo según la vacuna; marcar diabetes u obesidad no sustituye ese criterio. Se conservan las condiciones al aplicar; si falta información, el reporte lo señala para revisión.</p>
           </div>
           <p class="hint" id="dxAviso" hidden></p>
           <p class="hint" id="dxUnidad"></p>
@@ -172,16 +185,18 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
         <div class="grid">
           <div class="campo">Apellido paterno <input name="paterno"></div>
           <div class="campo">Apellido materno <input name="materno"></div>
-          <div class="campo">Nombre(s) * <input name="nombre" required></div>
+          <div class="campo">Nombre(s) <input name="nombre" required><label class="hint"><input type="checkbox" name="nombrePendiente"> RN sin nombre asignado (hasta 28 días y sin CURP)</label></div>
           <div class="campo">CURP *
             <input name="curp" maxlength="18" autocomplete="off" placeholder="18 caracteres o SIN CURP">
             <div id="curpMsg" class="ayuda"></div>
           </div>
           <div class="campo">Fecha de nacimiento * <input type="date" name="fechaNacimiento" required></div>
+          <div class="campo">Nacimiento múltiple: orden (si corresponde) <input type="number" name="ordenNacimiento" min="1" max="9"></div>
+          <div class="campo">Hora de nacimiento (si se conoce) <input type="time" name="horaNacimiento"></div>
           <div class="campo">Edad / Anexo <span><span id="edadOut">—</span><b id="anexoOut" style="color:var(--verde)"></b></span></div>
           <div class="campo">Sexo *
             <select name="sexo" required>
-              <option value="">—</option><option value="H">Hombre</option><option value="M">Mujer</option>
+              <option value="">—</option><option value="H">Hombre / niño</option><option value="M">Mujer / niña</option>
             </select>
           </div>
           <div class="campo">Derechohabiencia
@@ -224,8 +239,8 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
           </div>
           <div class="campo">Entidad <input id="entidad" autocomplete="off" placeholder="Escriba para filtrar"></div>
           <div class="campo">Municipio <input id="municipio" autocomplete="off" placeholder="Escriba para filtrar"></div>
-          <div class="campo">Colonia <input name="colonia" list="listaColonias" autocomplete="off"><datalist id="listaColonias"></datalist></div>
-          <div class="campo">Localidad <input id="localidad" autocomplete="off" placeholder="Escriba para filtrar"></div>
+          <div class="campo">Colonia / localidad <input name="colonia" list="listaColonias" autocomplete="off"><datalist id="listaColonias"></datalist><span id="localidadHistorica" class="hint"></span></div>
+          <div class="campo" hidden>Localidad <input id="localidad" autocomplete="off" placeholder="Escriba para filtrar"></div>
           <div class="campo">AGEB <input id="ageb" autocomplete="off" placeholder="Escriba para filtrar"></div>
           <div class="campo">Calle <input name="calle"></div>
           <div class="campo">No. ext. <input name="numExt"></div>
@@ -432,6 +447,10 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
         Zona, delegación, sector, manzana, AGEB del encabezado y la columna de códigos se llenan a mano.</p>
       <button class="btn" type="button" id="btnImprimir" onclick="imprimirAnexo()">Generar PDF</button>
       <button class="btn sec" type="button" id="btnConteo" onclick="contarDosisAplicadas()">Dosis aplicadas del periodo</button>
+      <hr>
+      <div class="campo">Primer día del concentrado invernal (hasta 7 días) <input type="date" id="campDesde" min="2026-10-12" max="2027-04-02"></div>
+      <p class="hint">Genera una copia del formato nacional aprobado, sin cambiar tamaño, colores ni columnas. Los antecedentes no cuentan como aplicaciones; los casos sin clasificación quedan en el reporte de calidad aparte.</p>
+      <button class="btn sec" type="button" id="btnCampana">Generar Excel oficial de campaña</button>
       <div id="impMsg" class="msg" role="status" aria-live="polite"></div>
       <ul id="impAvisos" class="hint"></ul>
       <div id="impConteo" class="tabla-wrap" hidden></div>
@@ -781,6 +800,13 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
     const usadas = {};
     const avisos = [];
     (r.vacunas || []).forEach(v => {
+      if (texto(v.origen) === 'PREVIA' && (texto(v.fuente) === 'REFERIDA' || texto(v.estadoRevision) === 'PENDIENTE')) {
+        avisos.push(`${r.folio}: ${v.vacuna} (${v.dosis || 'desconocida'}) pendiente de revisión; no se imprime como dosis documentada`);
+        return;
+      }
+      if (texto(v.origen) === 'PREVIA' && !/^\d{4}-\d{2}-\d{2}$/.test(String(v.fecha || ''))) {
+        avisos.push(`${r.folio}: ${v.vacuna} (${v.dosis || 'desconocida'}) sin fecha exacta; se conserva el antecedente sin inventar la fecha del formato`);
+      }
       // Tabla fija {"vacuna|dosis": clave} o función (registro, vacuna) → clave | null.
       const clave = typeof equivalencias === 'function' ? equivalencias(r, v) : equivalencias[`${v.vacuna}|${v.dosis}`];
       if (!clave || !clavesVacunas.has(clave)) {
@@ -1596,6 +1622,17 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
   /* ---------- Origen de la dosis ---------- */
   const origen = v => norm(v && v.origen) === 'PREVIA' ? 'PREVIA' : 'APLICADA';
   const esAplicada = v => origen(v) === 'APLICADA';
+  const precisionFecha = fecha => !fecha || norm(fecha) === 'NO CONSTA' ? 'DESCONOCIDA'
+    : esISO(fecha) ? 'EXACTA' : /^\d{4}-(0[1-9]|1[0-2])$/.test(fecha) ? 'MES' : /^\d{4}$/.test(fecha) ? 'ANIO' : 'INVALIDA';
+  const requiereRevision = v => origen(v) === 'PREVIA' &&
+    (!esISO(v.fecha) || norm(v.fuente) === 'REFERIDA' || norm(v.estadoRevision) === 'PENDIENTE' || !v.dosis || norm(v.dosis) === 'DESCONOCIDA');
+  // Identificador de ciclo para evitar duplicar refuerzos estacionales. No determina elegibilidad clínica.
+  const temporada = v => /INFLUENZA|COVID/.test(norm(v.vacuna)) && esISO(v.fecha)
+    ? String(Number(v.fecha.slice(0, 4)) - (Number(v.fecha.slice(5, 7)) < 7 ? 1 : 0)) : '';
+  // Algunas vacunas comparten antecedentes: Td/Tdpa y la serie primaria, o SR/SRP.
+  const grupoRevision = vacuna => /^TDPA|^TD\b|^HEXAVALENTE|^DPT\b/.test(norm(vacuna)) ? 'TETANOS'
+    : /^SRP?\b/.test(norm(vacuna)) ? 'SARAMPION' : norm(vacuna);
+  const enRevision = (vacuna, vacunas) => (vacunas || []).some(v => requiereRevision(v) && grupoRevision(v.vacuna) === grupoRevision(vacuna));
 
   /* ---------- Series ----------
    * dosis: { d: etiqueta del catálogo, edad: meses (o dias), min: días desde la dosis anterior }
@@ -1710,7 +1747,7 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
   function persona_(persona, vacunas, hoy) {
     const nac = persona.fechaNacimiento;
     const edad = edadAnios(nac, hoy);
-    const lista = (vacunas || []).filter(v => esISO(v.fecha));
+    const lista = (vacunas || []).filter(v => esISO(v.fecha) && !requiereRevision(v));
     const fecha = (vacuna, d) => {
       const v = lista.find(x => norm(x.vacuna) === norm(vacuna) && norm(x.dosis) === norm(d));
       return v ? v.fecha : '';
@@ -1828,6 +1865,13 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
     pend.filter(x => !deSerie[norm(x.vacuna)]).forEach(x =>
       fila(x.vacuna).dosis.push({ dosis: x.dosis, estado: x.estado, desde: x.desde, hasta: x.hasta, nota: x.nota }));
     p.vacunas.filter(v => usadas.indexOf(v) < 0).forEach(v => fila(v.vacuna).dosis.push(aplicada(v)));
+    (vacunas || []).filter(requiereRevision).forEach(v => fila(v.vacuna).dosis.push({
+      dosis: v.dosis || 'DESCONOCIDA', estado: 'REVISION', fecha: v.fecha || '', origen: 'PREVIA',
+      fuente: v.fuente || '', id: v.id || '', nota: 'Antecedente pendiente de revisión por personal de salud; no permite concluir fechas ni intervalos'
+    }));
+    filas.filter(f => enRevision(f.vacuna, vacunas)).forEach(f => f.dosis.forEach(d => {
+      if (d.estado !== 'APLICADA') { d.estado = 'REVISION'; d.nota = 'Revisar antecedentes antes de decidir la siguiente dosis'; }
+    }));
     const orden = d => { const i = ORDEN.indexOf(norm(d.dosis)); return i < 0 ? ORDEN.length : i; };
     const porFecha = (a, b) => String(a.fecha || '').localeCompare(String(b.fecha || ''));
     filas.forEach(f => f.dosis.sort(f.toxoide
@@ -1841,6 +1885,8 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
     const r = { aplicadas: 0, porRegistrar: 0, atrasadas: 0, pendientes: 0, proximas: 0 };
     const campo = { APLICADA: 'aplicadas', 'FALTA REGISTRAR': 'porRegistrar', ATRASADA: 'atrasadas', PENDIENTE: 'pendientes', PROXIMA: 'proximas' };
     (filas || []).forEach(f => f.dosis.forEach(d => { if (campo[d.estado] && !d.contada) r[campo[d.estado]]++; }));
+    const revisiones = (filas || []).reduce((n, f) => n + f.dosis.filter(d => d.estado === 'REVISION' && !d.contada).length, 0);
+    if (revisiones) r.revisiones = revisiones;
     return r;
   }
 
@@ -1849,7 +1895,7 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
    * Vacuna: ATRASADA > FALTA REGISTRAR > PENDIENTE > PROXIMA > EN CURSO (aplicadas y faltan dosis futuras) > COMPLETA.
    * Persona: ATRASADA, FALTA REGISTRAR, PENDIENTE o AL CORRIENTE (próximas y en curso cuentan como al corriente).
    */
-  const PEOR = ['ATRASADA', 'FALTA REGISTRAR', 'PENDIENTE', 'PROXIMA'];
+  const PEOR = ['REVISION', 'ATRASADA', 'FALTA REGISTRAR', 'PENDIENTE', 'PROXIMA'];
   function estadoCartilla(filas) {
     const vacunas = (filas || []).map(f => {
       const est = f.dosis.filter(d => !d.contada).map(d => d.estado);
@@ -1858,7 +1904,7 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
       const estado = peor || (!aplicadas ? 'FUERA DE EDAD' : est.indexOf('DESPUES') >= 0 ? 'EN CURSO' : 'COMPLETA');
       return { vacuna: f.vacuna, estado, aplicadas, total: est.filter(e => e !== 'FUERA DE EDAD').length };
     }).filter(v => v.estado !== 'FUERA DE EDAD');
-    const peor = PEOR.slice(0, 3).find(e => vacunas.some(v => v.estado === e));
+    const peor = PEOR.slice(0, 4).find(e => vacunas.some(v => v.estado === e));
     return { estado: peor || 'AL CORRIENTE', vacunas };
   }
 
@@ -1867,7 +1913,15 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
     if (!persona || !esISO(persona.fechaNacimiento) || !esISO(hoy) || persona.fechaNacimiento > hoy) return [];
     const p = persona_(persona, vacunas, hoy);
     const r = SERIES.filter(s => s.aplica(p)).map(s => evaluarSerie(s, p, hoy));
-    return r.concat(evaluarSR(p, hoy), evaluarTd(p, hoy), evaluarEmbarazo(p, hoy)).filter(Boolean);
+    const resultado = r.concat(evaluarSR(p, hoy), evaluarTd(p, hoy), evaluarEmbarazo(p, hoy)).filter(Boolean);
+    resultado.filter(x => enRevision(x.vacuna, vacunas)).forEach(x => Object.assign(x, {
+      estado: 'REVISION', desde: '', hasta: '', nota: 'Revisar antecedentes antes de decidir la siguiente dosis'
+    }));
+    (vacunas || []).filter(requiereRevision).forEach(v => {
+      if (!resultado.some(x => norm(x.vacuna) === norm(v.vacuna))) resultado.push({ vacuna: v.vacuna,
+        dosis: v.dosis || 'DESCONOCIDA', estado: 'REVISION', desde: '', hasta: '', nota: 'Antecedente pendiente de revisión por personal de salud' });
+    });
+    return resultado;
   }
 
   /** Errores de fechas y orden de las dosis capturadas (lista vacía si todo está bien). */
@@ -1877,22 +1931,30 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
     const vistas = {};
     const nombre = v => `${v.vacuna} (${v.dosis})`;
     (vacunas || []).forEach(v => {
-      if (!esISO(v.fecha)) return e.push(`${nombre(v)}: fecha no válida`);
-      if (v.fecha > hoy) e.push(`${nombre(v)}: fecha futura`);
-      if (nac && v.fecha < nac) e.push(`${nombre(v)}: fecha anterior al nacimiento`);
-      if (origen(v) === 'PREVIA') {
+      const previa = origen(v) === 'PREVIA', precision = precisionFecha(v.fecha);
+      if (!String(v.vacuna || '').trim()) e.push('Seleccione la vacuna');
+      if (!previa && !String(v.dosis || '').trim()) e.push(`${nombre(v)}: indique la dosis`);
+      if ((!previa && precision !== 'EXACTA') || precision === 'INVALIDA') e.push(`${nombre(v)}: fecha no válida`);
+      const fecha = precision === 'MES' ? v.fecha + '-01' : precision === 'ANIO' ? v.fecha + '-01-01' : v.fecha;
+      const fin = precision === 'MES' ? masDias(masMeses(fecha, 1), -1) : precision === 'ANIO' ? v.fecha + '-12-31' : fecha;
+      if (precision !== 'DESCONOCIDA' && precision !== 'INVALIDA' && fecha > hoy) e.push(`${nombre(v)}: fecha futura`);
+      if (nac && fin && precision !== 'INVALIDA' && fin < nac) e.push(`${nombre(v)}: fecha anterior al nacimiento`);
+      if (previa) {
         if (!String(v.fuente || '').trim()) e.push(`${nombre(v)}: indique la fuente de la dosis previa`);
-        // Si la cartilla no lo trae se escribe NO CONSTA: así nadie inventa un dato para llenar el campo.
-        if (!String(v.lote || '').trim()) e.push(`${nombre(v)}: indique el lote o marque "No consta"`);
-        if (!String(v.caducidad || '').trim()) e.push(`${nombre(v)}: indique la caducidad o marque "No consta"`);
-        if (esISO(v.caducidad) && v.caducidad < v.fecha) e.push(`${nombre(v)}: caducidad anterior a la aplicación`);
+        if (v.caducidad && norm(v.caducidad) !== 'NO CONSTA' && !esISO(v.caducidad)) e.push(`${nombre(v)}: caducidad no válida`);
+        if (esISO(v.caducidad) && esISO(v.fecha) && v.caducidad < v.fecha) e.push(`${nombre(v)}: caducidad anterior a la aplicación`);
       }
-      const clave = norm(v.vacuna) + '|' + norm(v.dosis);
+      const desconocida = !v.dosis || norm(v.dosis) === 'DESCONOCIDA' || !esISO(v.fecha);
+      const detalle = desconocida ? '|' + [v.fecha || '', v.fuente || '', v.lote || '', v.caducidad || '', v.lugarAplicacion || ''].map(norm).join('|') : '';
+      const clave = norm(v.vacuna) + '|' + norm(v.dosis) + '|' + temporada(v) + detalle;
       if (vistas[clave]) e.push(`${nombre(v)}: dosis repetida`);
       vistas[clave] = v;
     });
     const series = {};
-    Object.values(vistas).filter(v => esISO(v.fecha)).forEach(v => (series[norm(v.vacuna)] = series[norm(v.vacuna)] || []).push(v));
+    Object.values(vistas).filter(v => esISO(v.fecha)).forEach(v => {
+      const clave = norm(v.vacuna) + '|' + temporada(v);
+      (series[clave] = series[clave] || []).push(v);
+    });
     Object.values(series).forEach(lista => {
       lista.sort((a, b) => ORDEN.indexOf(norm(a.dosis)) - ORDEN.indexOf(norm(b.dosis)));
       for (let i = 1; i < lista.length; i++) {
@@ -1902,7 +1964,222 @@ main{max-width:1200px;margin:auto;padding:36px 40px 64px;min-width:0}.tab{displa
     return e;
   }
 
-  return { calcular, validar, cartilla, resumenCartilla, estadoCartilla, embarazo, permitida, origen, esAplicada, ESTADOS: ['PENDIENTE', 'ATRASADA', 'PROXIMA', 'FUERA DE EDAD'] };
+  return { calcular, validar, cartilla, resumenCartilla, estadoCartilla, embarazo, permitida, origen, esAplicada,
+    esISO, precisionFecha, requiereRevision, ESTADOS: ['PENDIENTE', 'ATRASADA', 'PROXIMA', 'FUERA DE EDAD', 'REVISION'] };
+});
+
+</script>
+
+<!-- GENERADO por motor/empaquetar.js — no editar a mano. -->
+<script>
+/* Campaña invernal México 2026–2027. Cotejo visual: documento CENSIA, pp. 9–11, 24–25, 31–33 y enmienda p.40.
+ * No constituye indicación automática de vacunación. La clasificación mide dosis ya aplicadas.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.CampanaCENSIA = factory();
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+  const FUENTE = 'https://www.gob.mx/cms/uploads/attachment/file/1108569/LINEAMIENTOS_GENERALES_CAMPA_A__DE_VACUNACIoN_TEMPORADA_INVERNAL_2026-2027.pdf';
+  const INICIO = '2026-10-12', FIN = '2027-04-02';
+  const COMORBILIDADES = [
+    ['VIH', 'VIH/sida'], ['DIABETES', 'Diabetes mellitus'], ['OBESIDAD', 'Obesidad mórbida / obesidad según criterio de la vacuna'],
+    ['CARDIOPATIA', 'Cardiopatía'], ['PULMONAR', 'Enfermedad pulmonar crónica, EPOC o asma'], ['CANCER', 'Cáncer'],
+    ['SALICILATOS', 'Enfermedad congénita o consumo prolongado de salicilatos'], ['RENAL', 'Insuficiencia renal'],
+    ['INMUNOSUPRESION', 'Inmunosupresión por enfermedad o tratamiento'], ['DISCAPACIDAD', 'Discapacidad (COVID)'],
+    ['FIBROSIS', 'Fibrosis quística (COVID)'], ['HIPERTENSION', 'Hipertensión arterial (COVID)'], ['OTROS', 'Otro grupo de riesgo']
+  ].map(([id, nombre]) => ({ id, nombre }));
+  const PRODUCTOS = [
+    { id: 'PFIZER_XFG_30', nombre: 'Comirnaty XFG · Pfizer · 30 µg / 0.3 mL · ≥12 años', marca: 'PFIZER',
+      minMeses: 144, maxMeses: null, volumen: 0.3, formulacion: 'XFG', presentacion: 'Frasco multidosis tapa gris oscuro, 6 dosis' },
+    { id: 'MODERNA_LP81_25', nombre: 'Spikevax LP.8.1 · Moderna · 25 µg / 0.25 mL · 6 meses a 11 años', marca: 'MODERNA',
+      minMeses: 6, maxMeses: 143, volumen: 0.25, formulacion: 'LP.8.1', presentacion: 'Frasco multidosis 2.5 mL' },
+    { id: 'MODERNA_LP81_50', nombre: 'Spikevax LP.8.1 · Moderna · 50 µg / 0.5 mL · ≥12 años', marca: 'MODERNA',
+      minMeses: 144, maxMeses: null, volumen: 0.5, formulacion: 'LP.8.1', presentacion: 'Frasco multidosis 2.5 mL' }
+  ].map(p => Object.assign({ fuente: FUENTE, pagina: 40, temporada: '2026-2027', desde: INICIO, hasta: FIN }, p));
+  const norm = v => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+  function fechaISO(v) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(v || ''))) return false;
+    const d = new Date(v + 'T12:00:00Z');
+    return !Number.isNaN(+d) && d.toISOString().slice(0, 10) === v;
+  }
+  function edadMeses(nac, dia) {
+    if (!fechaISO(nac) || !fechaISO(dia) || nac > dia) return null;
+    const a = nac.split('-').map(Number), b = dia.split('-').map(Number);
+    return (b[0] - a[0]) * 12 + b[1] - a[1] - (b[2] < a[2] ? 1 : 0);
+  }
+  function validarProducto(persona, a) {
+    const p = PRODUCTOS.find(p => p.id === a.producto);
+    if (!p) return 'Seleccione la presentación de COVID-19 verificada para esta temporada';
+    const meses = edadMeses(persona.fechaNacimiento, a.fecha);
+    if (meses === null) return 'Revise fecha de nacimiento y fecha de aplicación';
+    if (a.fecha < p.desde || a.fecha > p.hasta) return 'Presentación fuera de la temporada cotejada; requiere revisión del personal';
+    if (meses < p.minMeses || (p.maxMeses !== null && meses > p.maxMeses)) return 'La edad al aplicar no corresponde a la presentación seleccionada';
+    if (a.marca && norm(a.marca) !== p.marca) return 'La marca no corresponde a la presentación seleccionada';
+    return '';
+  }
+  function lunes(iso) {
+    const d = new Date(iso + 'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate() - (d.getUTCDay() + 6) % 7);
+    return d.toISOString().slice(0, 10);
+  }
+  function comorbilidades(a) {
+    let ids = a.comorbilidades || [];
+    if (typeof ids === 'string') {
+      try { ids = JSON.parse(ids); } catch (_) { ids = ids.split(/[|,;]/); }
+    }
+    if (!Array.isArray(ids)) return [];
+    return [...new Set(ids.map(norm))].filter(id => COMORBILIDADES.some(c => c.id === id));
+  }
+  function grupoRiesgo(a, covid) {
+    if (norm(a.tieneComorbilidades || a.comorbilidad) === 'NO' && comorbilidades(a).length) return '';
+    const ids = comorbilidades(a).filter(id => covid || !['DISCAPACIDAD', 'FIBROSIS', 'HIPERTENSION'].includes(id));
+    if (norm(a.embarazada) === 'SI') ids.push('EMBARAZADA');
+    if (norm(a.personalSalud) === 'SI') ids.push('PERSONAL');
+    const seleccionado = norm(a.grupoReporte);
+    if (seleccionado) return ids.includes(seleccionado) ? seleccionado : '';
+    return ids.length === 1 ? ids[0] : '';
+  }
+  function clasificar(persona, a) {
+    const meses = edadMeses(persona.fechaNacimiento, a.fecha);
+    if (meses === null) return { motivo: 'Fecha de nacimiento o aplicación inválida' };
+    const vacuna = norm(a.vacuna);
+    const covid = vacuna.includes('COVID'), influ = vacuna.includes('INFLU');
+    if (!covid && !influ) return { motivo: 'Vacuna fuera del informe de campaña' };
+    const dosis = norm(a.dosis), primera = /^1/.test(dosis) || dosis === 'PRIMERA', segunda = /^2/.test(dosis) || dosis === 'SEGUNDA';
+    const anual = ['ANUAL', 'DOSIS ANUAL', 'REFUERZO', 'REVACUNACION'].includes(dosis);
+    let filaOficial, filaLocal, grupo;
+    if (covid) {
+      const error = validarProducto(persona, a);
+      if (error) return { motivo: error };
+      if (meses >= 6 && meses <= 59 && (primera || segunda)) { filaOficial = primera ? 64 : 65; grupo = 'INFANCIA'; }
+      else if (meses >= 720 && anual) { filaOficial = 67; grupo = 'MAYOR'; }
+      else if (anual) {
+        grupo = grupoRiesgo(a, true);
+        if (grupo === 'EMBARAZADA') filaOficial = 68;
+        else if (grupo === 'PERSONAL') filaOficial = 69;
+        else if (grupo && meses >= 60 && meses < 720) filaOficial = 66;
+      }
+      // La plantilla nacional carece de fila de refuerzo en menores de 5 con comorbilidad.
+      if (!filaOficial) return { motivo: 'Grupo/dosis COVID sin correspondencia inequívoca en el formato; revisar clasificación' };
+    } else {
+      if (meses >= 6 && meses <= 59) {
+        const rango = meses < 12 ? 0 : Math.floor(meses / 12);
+        if (primera) { filaOficial = 12 + rango; filaLocal = [8, 9, 10, 12, 13][rango]; }
+        else if (segunda && meses >= 7) { filaOficial = 17 + rango; filaLocal = [15, 16, 17, 19, 20][rango]; }
+        else if (anual && meses >= 18) { filaOficial = 21 + rango; filaLocal = [null, 22, 23, 25, 26][rango]; }
+        grupo = 'INFANCIA';
+      } else if (meses >= 720 && anual) { filaOficial = 26; filaLocal = 28; grupo = 'MAYOR'; }
+      else if (meses >= 60 && meses < 720 && (anual || (meses < 108 && (primera || segunda)))) {
+        grupo = grupoRiesgo(a, false);
+        const banda = meses < 120 ? 0 : meses < 240 ? 1 : 2;
+        const bases = { VIH: 29, DIABETES: 32, OBESIDAD: 35, CARDIOPATIA: 38, PULMONAR: 41, CANCER: 44,
+          SALICILATOS: 47, RENAL: 49, INMUNOSUPRESION: 52, OTROS: 55 };
+        const locales = { VIH: 32, DIABETES: 35, OBESIDAD: 38, CARDIOPATIA: 41, PULMONAR: 44, CANCER: 47,
+          SALICILATOS: 50, RENAL: 52, INMUNOSUPRESION: 55, OTROS: 58 };
+        if (grupo === 'EMBARAZADA') { filaOficial = 27; filaLocal = 30; }
+        else if (grupo === 'PERSONAL') { filaOficial = 28; filaLocal = 31; }
+        else if (bases[grupo] && !(grupo === 'SALICILATOS' && banda === 2)) {
+          filaOficial = bases[grupo] + banda; filaLocal = locales[grupo] + banda;
+        }
+      }
+      if (!filaOficial) return { motivo: 'Grupo/dosis influenza sin correspondencia inequívoca; revisar riesgo y grupo de reporte' };
+    }
+    const producto = PRODUCTOS.find(p => p.id === a.producto);
+    return { vacuna: covid ? 'COVID-19' : 'INFLUENZA', grupo, filaOficial, filaLocal, edadMeses: meses,
+      semana: lunes(a.fecha), marca: producto ? producto.marca : '', volumen: producto ? producto.volumen : 0.5 };
+  }
+  function resumir(opciones) {
+    const o = opciones || {}, pacientes = Array.isArray(o.pacientes) ? Object.fromEntries(o.pacientes.map(p => [p.folio, p])) : o.pacientes || {};
+    const clasificadas = [], pendientes = [], porMarca = {}, excluidas = { previas: 0, otraUnidad: 0, otroPeriodo: 0, otraVacuna: 0, duplicadas: 0 };
+    const vistas = new Set(), firmas = new Map(), conflictos = new Set(); let total = 0;
+    (o.aplicaciones || []).forEach(a => {
+      if (!a.id) return;
+      const firma = JSON.stringify(Object.keys(a).sort().map(k => [k, a[k]]));
+      if (firmas.has(a.id) && firmas.get(a.id) !== firma) conflictos.add(a.id);
+      firmas.set(a.id, firma);
+    });
+    (o.aplicaciones || []).forEach(a => {
+      if (norm(a.origen) === 'PREVIA') { excluidas.previas++; return; }
+      if (!/COVID|INFLU/.test(norm(a.vacuna))) { excluidas.otraVacuna++; return; }
+      const clues = a.cluesAplicacion || a.clues;
+      if (o.clues && clues && clues !== o.clues) { excluidas.otraUnidad++; return; }
+      if (fechaISO(a.fecha) && ((o.desde && a.fecha < o.desde) || (o.hasta && a.fecha > o.hasta))) { excluidas.otroPeriodo++; return; }
+      if (a.id && vistas.has(a.id)) { excluidas.duplicadas++; return; }
+      if (a.id) vistas.add(a.id);
+      total++;
+      const persona = a.persona || pacientes[a.folio];
+      let resultado;
+      if (!a.id) resultado = { motivo: 'Falta ID de aplicación' };
+      else if (conflictos.has(a.id)) resultado = { motivo: 'ID de aplicación repetido con datos contradictorios' };
+      else if (norm(a.origen) !== 'APLICADA') resultado = { motivo: 'Origen no confirmado como aplicación' };
+      else if (!clues) resultado = { motivo: 'Falta unidad responsable de aplicación' };
+      else if (!persona) resultado = { motivo: 'Falta identificación de la persona' };
+      else if (!fechaISO(a.fecha)) resultado = { motivo: 'Falta fecha exacta de aplicación' };
+      else if (a.fecha < INICIO || a.fecha > FIN) resultado = { motivo: 'Fuera de la campaña cotejada 2026–2027' };
+      else resultado = clasificar(persona, a);
+      const fila = Object.assign({}, a, resultado, { persona });
+      if (resultado.motivo) pendientes.push(fila);
+      else { clasificadas.push(fila); if (resultado.marca) porMarca[resultado.marca] = (porMarca[resultado.marca] || 0) + 1; }
+    });
+    return { temporada: '2026-2027', total, clasificadas, pendientes, excluidas, porMarca,
+      conciliado: total === clasificadas.length + pendientes.length, fuente: FUENTE };
+  }
+  function planCeldas(resumen, tipo, opciones) {
+    const o = opciones || {}, celdas = {}, cacheFormulas = {}, avisos = [];
+    const filas = resumen.clasificadas || [];
+    if (tipo === 'concentrado') {
+      if (!fechaISO(o.desde)) throw new Error('Indique el primer día del concentrado (fecha exacta)');
+      const dias = Array.from({ length: 7 }, (_, i) => new Date(Date.parse(o.desde + 'T12:00:00Z') + i * 86400000).toISOString().slice(0, 10));
+      const rs = Array.from({ length: 46 }, (_, i) => i + 12).concat([64, 65, 66, 67, 68, 69]);
+      dias.forEach((dia, i) => {
+        const col = String.fromCharCode(72 + i);
+        celdas[col + '11'] = dia.split('-').reverse().join('/');
+        celdas[col + '63'] = dia.split('-').reverse().join('/');
+        rs.forEach(r => { celdas[col + r] = 0; });
+      });
+      filas.forEach(a => {
+        const i = dias.indexOf(a.fecha);
+        if (i < 0) { avisos.push({ id: a.id, motivo: 'Aplicación fuera de los siete días seleccionados' }); return; }
+        const celda = String.fromCharCode(72 + i) + a.filaOficial;
+        if (!(celda in celdas)) { avisos.push({ id: a.id, motivo: 'Fila no permitida' }); return; }
+        celdas[celda]++;
+      });
+      rs.forEach(r => {
+        const n = dias.reduce((s, _, i) => s + celdas[String.fromCharCode(72 + i) + r], 0);
+        if (r <= 57) cacheFormulas['O' + r] = n;
+        else celdas['O' + r] = n;
+      });
+      'HIJKLMNO'.split('').forEach(col => {
+        const obtener = r => (celdas[col + r] || cacheFormulas[col + r] || 0);
+        cacheFormulas[col + '58'] = Array.from({ length: 46 }, (_, i) => obtener(i + 12)).reduce((a, b) => a + b, 0);
+        cacheFormulas[col + '70'] = [64, 65, 66, 67, 68, 69].reduce((s, r) => s + obtener(r), 0);
+        // Se conserva exactamente la fórmula oficial de equivalentes de 0.5 mL, sin reinterpretar Pfizer.
+        cacheFormulas[col + '71'] = (obtener(64) + obtener(65)) / 2 + [66, 67, 68, 69].reduce((s, r) => s + obtener(r), 0);
+      });
+      if (filas.some(a => a.marca === 'PFIZER')) avisos.push({ motivo: 'La fila 71 del formato oficial expresa equivalentes de 0.5 mL; no representa volumen físico de Pfizer (0.3 mL). Fórmula oficial conservada.' });
+      return { hoja: 'CONCENTRADO UNIDAD DE SALUD INF', celdas, cacheFormulas, avisos };
+    }
+    if (tipo === 'influenza-local') {
+      if (!Array.isArray(o.calendario) || !o.calendario.length) throw new Error('El calendario semanal debe ser explícito, con año y asignación de fines de semana');
+      const permitidas = new Set(['G', 'H', 'I', 'J', 'K', 'M', 'N', 'O', 'P', 'Q', 'S', 'T', 'U', 'V', 'W', 'Y', 'Z', 'AA', 'AB', 'AC', 'AE', 'AF', 'AG', 'AH', 'AI', 'AK', 'AL', 'AM', 'AN', 'AO', 'AQ', 'AR', 'AS', 'AT', 'AU']);
+      o.calendario.forEach((w, i) => {
+        if (!fechaISO(w.desde) || !fechaISO(w.hasta) || w.desde > w.hasta || !permitidas.has(w.columna)) throw new Error('Periodo o columna semanal no permitido');
+        if (o.calendario.some((x, j) => j < i && (x.columna === w.columna || (w.desde <= x.hasta && w.hasta >= x.desde)))) throw new Error('Calendario semanal con columnas o periodos repetidos');
+      });
+      const rs = [8, 9, 10, 12, 13, 15, 16, 17, 19, 20, 22, 23, 25, 26, 28, 30, 31, ...Array.from({ length: 29 }, (_, i) => i + 32)];
+      o.calendario.forEach(w => rs.forEach(r => { celdas[w.columna + r] = 0; }));
+      filas.filter(a => a.vacuna === 'INFLUENZA').forEach(a => {
+        const w = o.calendario.find(w => a.fecha >= w.desde && a.fecha <= w.hasta);
+        if (!w || !rs.includes(a.filaLocal)) { avisos.push({ id: a.id, motivo: 'Fecha o grupo sin celda semanal autorizada' }); return; }
+        celdas[w.columna + a.filaLocal]++;
+      });
+      avisos.push({ motivo: 'Conservadas fórmulas y referencias externas originales; la plantilla local requiere revisión de AZ11 (#REF!) y recálculo en Excel. Conciliación válida en el informe JSON independiente.' });
+      return { hoja: 'CEAPS SANTA ROSA', celdas, cacheFormulas, avisos };
+    }
+    throw new Error('Tipo de formato no autorizado; no se llena automáticamente el COVID local ambiguo');
+  }
+  return { COMORBILIDADES, PRODUCTOS, FUENTE, INICIO, FIN, fechaISO, edadMeses, validarProducto, comorbilidades, clasificar, resumir, planCeldas };
 });
 
 </script>
@@ -2029,9 +2306,11 @@ function msgExp(texto, error = false) {
   m.className = 'msg ' + (error ? 'err' : 'ok');
 }
 
-let curpBuscada = '';
+let curpBuscada = '', busquedaSecuencia = 0, expedienteSecuencia = 0;
 /** op.abrirSiUno: búsqueda por CURP (QR o 18 caracteres) que abre el expediente si hay una sola persona. */
 async function buscarPersona(op) {
+  const secuencia = ++busquedaSecuencia;
+  ++expedienteSecuencia;
   const cont = $('#resultadosBusqueda');
   const curp = $('#bxCurp').value.trim().toUpperCase();
   curpBuscada = curp;
@@ -2040,24 +2319,34 @@ async function buscarPersona(op) {
   const btn = $('#btnBuscarPersona');
   btn.disabled = true;
   try {
-    const lista = await llamar('pacienteBuscar', f);
-    if (op && op.abrirSiUno === true && lista.length === 1) { cont.innerHTML = ''; return abrirExpediente(lista[0].folio); }
+    const resultado = await llamar('pacienteBuscarAbrir', f);
+    if (secuencia !== busquedaSecuencia) return;
+    const lista = resultado.lista;
+    if (lista.length === 1 && resultado.expediente) {
+      cont.innerHTML = '';
+      return abrirExpediente(lista[0].folio, resultado.expediente);
+    }
     cont.innerHTML = lista.length
       ? lista.map(p => `<button class="btn sec" type="button" data-exp="${esc(p.folio)}" style="width:100%;margin-top:6px;justify-content:flex-start">
           <span><b>${esc(p.nombreCompleto)}</b> · ${esc(p.curp)} · ${fechaMx(p.fechaNacimiento)}${p.estadoRegistro === 'POR CONFIRMAR' ? ' · <span class="etq PENDIENTE">por confirmar</span>' : ''}
           <br><small>${esc(p.folio)}${p.ultimaUnidad ? ' · última vacuna en ' + esc(p.ultimaUnidad) : ''}</small></span></button>`).join('')
       : '<div class="msg err">No se encontró. Revise los datos o use "Registrar persona nueva".</div>';
   } catch (e) {
+    if (secuencia !== busquedaSecuencia) return;
     cont.innerHTML = `<div class="msg err">${esc(e.message)}</div>`;
   } finally {
-    btn.disabled = false;
+    if (secuencia === busquedaSecuencia) btn.disabled = false;
   }
 }
 
-async function abrirExpediente(folio) {
+async function abrirExpediente(folio, precargado) {
+  const secuencia = ++expedienteSecuencia;
   try {
-    EXP = await llamar('expedienteObtener', folio);
+    const resultado = precargado || await llamar('expedienteObtener', folio);
+    if (secuencia !== expedienteSecuencia) return;
+    EXP = resultado;
   } catch (e) {
+    if (secuencia !== expedienteSecuencia) return;
     frm.classList.remove('con-exp');
     $('#fsExpediente').hidden = true;
     $('#resultadosBusqueda').innerHTML = `<div class="msg err">${esc(e.message)}</div>`;
@@ -2074,8 +2363,8 @@ async function abrirExpediente(folio) {
 }
 
 const ESTADO_CART = { APLICADA: 'Aplicada', 'FALTA REGISTRAR': 'Falta registrar', ATRASADA: 'Atrasada', PENDIENTE: 'Le toca',
-  PROXIMA: 'Próxima', DESPUES: 'Después', 'FUERA DE EDAD': 'Fuera de edad' };
-const PESO_CART = { ATRASADA: 0, PENDIENTE: 1, 'FALTA REGISTRAR': 2, PROXIMA: 3 };
+  PROXIMA: 'Próxima', DESPUES: 'Después', 'FUERA DE EDAD': 'Fuera de edad', REVISION: 'Revisión por personal' };
+const PESO_CART = { REVISION: -1, ATRASADA: 0, PENDIENTE: 1, 'FALTA REGISTRAR': 2, PROXIMA: 3 };
 const claseEstado = e => e.split(' ')[0];
 /** Fechas útiles de una dosis pendiente: se omiten las que quedan a más de un año (p. ej. "desde 2000" en un adulto). */
 function rangoDosis(x) {
@@ -2135,7 +2424,8 @@ function pintarExpediente() {
   const captura = SESION && SESION.captura;
   const r = EXP.resumen;
   const faltan = r ? r.atrasadas + r.pendientes : 0;
-  const estado = !r ? '' : faltan + r.porRegistrar === 0
+  const estado = !r ? '' : r.revisiones
+    ? '<span class="exp-estado ojo">Antecedentes pendientes de revisión por personal</span>' : faltan + r.porRegistrar === 0
     ? '<span class="exp-estado ok">Esquema al corriente para su edad</span>'
     : `<span class="exp-estado ${r.atrasadas ? 'mal' : 'ojo'}">${[faltan ? `Le ${faltan === 1 ? 'falta' : 'faltan'} ${faltan} dosis` : '',
       r.porRegistrar ? `${r.porRegistrar} por registrar` : ''].filter(Boolean).join(' · ')}</span>`;
@@ -2148,9 +2438,10 @@ function pintarExpediente() {
   $('#expFaltan').innerHTML = pintarCartilla(captura);
   $('#expHistorial').innerHTML = EXP.vacunas.length
     ? `<ul class="hist">${EXP.vacunas.slice().reverse().map(v => `<li><div><b>${esc(v.vacuna)} (${esc(v.dosis)})</b>
-        <span>${fechaMx(v.fecha)} · Lote ${esc(v.lote || '—')}${v.caducidad ? ' · Cad. ' + esc(v.caducidad) : ''}</span>
-        <span class="hint">${esc(v.unidad || v.clues || '')}${v.vacunador ? ' · Aplicó ' + esc(v.vacunador) : ''}</span></div>
-        <span class="etq ${v.origen === 'PREVIA' ? 'FUERA' : 'PROXIMA'}">${v.origen === 'PREVIA' ? 'Previa · ' + esc(v.fuente) : 'Aplicada'}</span>
+        <span>${v.fecha ? fechaMx(v.fecha) : 'Fecha desconocida'} · Lote ${esc(v.lote || 'No consta')}${v.caducidad ? ' · Cad. ' + esc(v.caducidad) : ''}${v.producto ? ' · ' + esc(v.producto) : ''}</span>
+        <span class="hint">${v.origen === 'PREVIA' ? 'Lugar de aplicación: ' + esc(v.lugarAplicacion || v.cluesAplicacion || 'desconocido') : esc(v.unidad || v.clues || '')}${v.vacunador ? ' · Aplicó ' + esc(v.vacunador) : ''}</span></div>
+        <span class="etq ${v.origen === 'PREVIA' ? 'FUERA' : 'PROXIMA'}">${v.origen === 'PREVIA' ? (v.estadoRevision === 'PENDIENTE' || v.fuente === 'REFERIDA' ? esc(v.fuente) + ' · por revisar' : 'Documentada · ' + esc(v.fuente)) : 'Aplicada con plataforma'}</span>
+        ${captura && v.origen === 'PREVIA' ? `<button class="btn sec" type="button" data-revisar="${esc(v.id)}">Revisar antecedente</button>` : ''}
         ${captura && v.id && v.clues === miUnidad ? `<button class="btn sec" type="button" data-quitar="${esc(v.id)}">Quitar</button>` : ''}</li>`).join('')}</ul>`
     : '<p class="hint">Aún no tiene dosis registradas.</p>';
   $('#expEsavi').innerHTML = EXP.esavi.length
@@ -2183,13 +2474,14 @@ async function abrirFormDosis(modo, vacuna, dosis) {
   MODO_DOSIS = modo;
   const caja = $('#expDosis');
   caja.hidden = false;
+  delete caja.dataset.antecedente;
   $('#expMsg').className = 'msg';
   $('#expMsg').textContent = '';
   $('#expDosisTitulo').textContent = modo === 'PREVIA' ? 'Dosis previa (de la cartilla u otra institución)' : 'Vacuna aplicada hoy';
   caja.querySelectorAll('.dx-aplicada').forEach(x => { x.hidden = modo === 'PREVIA'; });
   caja.querySelectorAll('.dx-previa').forEach(x => { x.hidden = modo !== 'PREVIA'; });
   const anexo = anexoDeEdad(EXP.paciente.edad);
-  const catalogo = CAT.vacunas.filter(v => !anexo || v.anexos.includes(anexo));
+  const catalogo = CAT.vacunas.filter(v => modo === 'PREVIA' || !anexo || v.anexos.includes(anexo));
   // Lineamientos 2026: sexo, edad, embarazo y semana de gestación deciden qué vacunas se ofrecen (EsquemaCENSIA.permitida).
   const motivo = n => window.EsquemaCENSIA ? EsquemaCENSIA.permitida(EXP.paciente, n, modo, hoyLocalISO(), '', EXP.vacunas) : '';
   const todos = [...new Set(catalogo.map(v => v.nombre))];
@@ -2203,6 +2495,21 @@ async function abrirFormDosis(modo, vacuna, dosis) {
   $('#dxAviso').textContent = avisos.join(' · ');
   $('#dxVacuna').innerHTML = nombres.map(n => `<option ${n === vacuna ? 'selected' : ''}>${esc(n)}</option>`).join('');
   $('#dxFecha').value = modo === 'PREVIA' ? '' : hoyLocalISO();
+  $('#dxFecha').type = 'date';
+  $('#dxFecha').disabled = false;
+  $('#dxFechaNc').checked = false;
+  $('#dxLugarP').value = '';
+  $('#dxLugar').value = '';
+  $('#dxTieneComorbilidades').value = '';
+  $('#dxPersonalSalud').checked = false;
+  $('#dxGrupoReporte').innerHTML = '<option value="">Clasificación automática si es inequívoca</option>' +
+    [{id:'EMBARAZADA',nombre:'Embarazada'}, {id:'PERSONAL',nombre:'Personal de salud'},
+      ...(window.CampanaCENSIA ? CampanaCENSIA.COMORBILIDADES : [])].map(c => `<option value="${esc(c.id)}">${esc(c.nombre)}</option>`).join('');
+  $('#dxComorbilidades').innerHTML = (window.CampanaCENSIA ? CampanaCENSIA.COMORBILIDADES : []).map(c =>
+    `<label><input type="checkbox" value="${esc(c.id)}"> ${esc(c.nombre)}</label>`).join('');
+  $('#dxComorbilidades').hidden = true;
+  $('#dxProducto').innerHTML = '<option value="">Seleccione la presentación…</option>' +
+    (window.CampanaCENSIA ? CampanaCENSIA.PRODUCTOS : []).map(p => `<option value="${esc(p.id)}">${esc(p.nombre)}</option>`).join('');
   ['#dxLoteP', '#dxCadP'].forEach(id => { $(id).value = ''; $(id).disabled = false; });
   ['#dxLotePNc', '#dxCadPNc'].forEach(id => { $(id).checked = false; });
   $('#dxFuente').value = '';
@@ -2225,9 +2532,12 @@ async function abrirFormDosis(modo, vacuna, dosis) {
 
 function alCambiarVacunaDosis(dosis) {
   const nombre = $('#dxVacuna').value;
+  const esCovid = /COVID/i.test(nombre), esInfluenza = /INFLUENZA/i.test(nombre);
+  $('#dxProductoCampo').hidden = MODO_DOSIS !== 'APLICADA' || !esCovid;
+  $('#dxRiesgo').hidden = MODO_DOSIS !== 'APLICADA' || !(esCovid || esInfluenza);
   const anexo = anexoDeEdad(EXP.paciente.edad);
-  const d = [...new Set(CAT.vacunas.filter(v => v.nombre === nombre && (!anexo || v.anexos.includes(anexo))).flatMap(v => v.dosis))];
-  $('#dxDosis').innerHTML = d.map(x => `<option ${x === dosis ? 'selected' : ''}>${esc(x)}</option>`).join('');
+  const d = [...new Set(CAT.vacunas.filter(v => v.nombre === nombre && (MODO_DOSIS === 'PREVIA' || !anexo || v.anexos.includes(anexo))).flatMap(v => v.dosis))];
+  $('#dxDosis').innerHTML = (MODO_DOSIS === 'PREVIA' ? '<option value="">No se conoce</option>' : '') + d.map(x => `<option ${x === dosis ? 'selected' : ''}>${esc(x)}</option>`).join('');
   const lotes = CAT.biologicos.filter(b => coincide(nombre, b.biologico));
   // Si el lote no está cargado en el catálogo se escribe a mano ("Otro lote") con su caducidad.
   $('#dxLote').innerHTML = (lotes.length
@@ -2256,8 +2566,12 @@ async function guardarDosis() {
   btn.disabled = true;
   try {
     if (MODO_DOSIS === 'PREVIA') {
-      await llamar('previaRegistrar', EXP.paciente.folio, Object.assign(base, {
+      const antecedente = $('#expDosis').dataset.antecedente;
+      await llamar(antecedente ? 'previaActualizar' : 'previaRegistrar', EXP.paciente.folio, Object.assign(base, {
+        id: antecedente || '',
         fuente: $('#dxFuente').value,
+        precisionFecha: $('#dxFechaNc').checked ? 'DESCONOCIDA' : 'EXACTA',
+        lugarAplicacion: $('#dxLugarP').value.trim(),
         lote: $('#dxLotePNc').checked ? 'NO CONSTA' : $('#dxLoteP').value.trim(),
         caducidad: $('#dxCadPNc').checked ? 'NO CONSTA' : $('#dxCadP').value
       }));
@@ -2268,7 +2582,13 @@ async function guardarDosis() {
       await llamar('aplicacionRegistrar', EXP.paciente.folio, Object.assign(base, otro
         ? { lote: $('#dxLoteOtro').value.trim(), caducidad: $('#dxCaducidad').value, biologico: '', loteManual: true }
         : { lote: b ? b.lote : '', caducidad: b ? b.caducidad : '', biologico: b ? b.biologico : '' },
-        { idVacunador: $('#dxVacunador').value }));
+        { idVacunador: $('#dxVacunador').value, lugarAplicacion: $('#dxLugar').value.trim(),
+          producto: /COVID/i.test(base.vacuna) ? $('#dxProducto').value : '',
+          tieneComorbilidades: $('#dxRiesgo').hidden ? '' : $('#dxTieneComorbilidades').value,
+          comorbilidades: $('#dxRiesgo').hidden || $('#dxTieneComorbilidades').value !== 'SI' ? [] :
+            [...document.querySelectorAll('#dxComorbilidades input:checked')].map(c => c.value),
+          personalSalud: $('#dxRiesgo').hidden ? '' : $('#dxPersonalSalud').checked ? 'SI' : 'NO',
+          grupoReporte: $('#dxRiesgo').hidden ? '' : $('#dxGrupoReporte').value }));
     }
     await abrirExpediente(EXP.paciente.folio);
     msgExp('Dosis guardada');
@@ -2350,11 +2670,36 @@ $('#btnCancelarDosis').addEventListener('click', () => { $('#expDosis').hidden =
 $('#btnGuardarDosis').addEventListener('click', guardarDosis);
 $('#dxVacuna').addEventListener('change', () => alCambiarVacunaDosis());
 $('#dxLote').addEventListener('change', alCambiarLoteDosis);
+$('#dxFechaNc').addEventListener('change', e => {
+  $('#dxFecha').disabled = e.target.checked;
+  if (e.target.checked) $('#dxFecha').value = '';
+});
+$('#dxTieneComorbilidades').addEventListener('change', e => {
+  $('#dxComorbilidades').hidden = e.target.value !== 'SI';
+  if (e.target.value !== 'SI') document.querySelectorAll('#dxComorbilidades input').forEach(c => { c.checked = false; });
+});
 [['#dxLotePNc', '#dxLoteP'], ['#dxCadPNc', '#dxCadP']].forEach(([nc, campo]) => $(nc).addEventListener('change', e => {
   $(campo).disabled = e.target.checked;
   if (e.target.checked) $(campo).value = '';
 }));
 $('#fsExpediente').addEventListener('click', async e => {
+  const revisar = e.target.closest('button[data-revisar]');
+  if (revisar) {
+    const v = EXP.vacunas.find(x => x.id === revisar.dataset.revisar);
+    if (!v) return;
+    await abrirFormDosis('PREVIA',v.vacuna,v.dosis);
+    $('#expDosis').dataset.antecedente = v.id;
+    $('#expDosisTitulo').textContent = 'Revisar antecedente con la cartilla';
+    $('#dxFuente').value = ['CARTILLA','REFERIDA'].includes(v.fuente) ? v.fuente : '';
+    $('#dxFecha').type = /^\d{4}$/.test(v.fecha) ? 'number' : /^\d{4}-\d{2}$/.test(v.fecha) ? 'month' : 'date';
+    $('#dxFecha').value = v.fecha || '';
+    $('#dxFechaNc').checked = !v.fecha;
+    $('#dxFecha').disabled = !v.fecha;
+    $('#dxLugarP').value = v.lugarAplicacion || '';
+    $('#dxLoteP').value = v.lote === 'NO CONSTA' ? '' : v.lote || '';
+    $('#dxCadP').value = v.caducidad === 'NO CONSTA' ? '' : v.caducidad || '';
+    return;
+  }
   const ap = e.target.closest('button[data-aplicar]');
   if (ap) { const [v, d] = ap.dataset.aplicar.split('|'); return abrirFormDosis('APLICADA', v, d); }
   const pr = e.target.closest('button[data-previa]');
@@ -2946,6 +3291,10 @@ function leerForm() {
   new FormData(frm).forEach((v, k) => { d[k] = String(v).trim(); });
   Object.entries(CB).forEach(([k, c]) => d[k] = c.valor);
   d.indigena = frm.indigena.checked ? 'SI' : 'NO';
+  d.nombrePendiente = frm.nombrePendiente.checked ? 'SI' : 'NO';
+  if (d.nombrePendiente === 'SI' && !d.curp) d.curp = 'SIN CURP';
+  d.localidad = frm.dataset.coloniaOriginal === d.colonia && frm.dataset.localidadOriginal
+    ? frm.dataset.localidadOriginal : d.colonia;
   return d;
 }
 
@@ -3012,6 +3361,8 @@ async function guardar(ev) {
 }
 
 function nuevo(conservarMensaje = false) {
+  ++busquedaSecuencia;
+  ++expedienteSecuencia;
   editando = null;
   const top = ['jurisdiccion', 'munUnidad', 'clues'];
   const guardado = Object.fromEntries(top.map(k => [k, CB[k].valor]));
@@ -3020,6 +3371,10 @@ function nuevo(conservarMensaje = false) {
   clearTimeout(scanTimer);
   cerrarCamara();
   frm.reset();
+  delete frm.dataset.coloniaOriginal;
+  delete frm.dataset.localidadOriginal;
+  $('#localidadHistorica').textContent = '';
+  frm.nombre.required = true;
   $('#fechaAplicacion').value = fechaAplic || hoyLocalISO();
   $('#cpMsg').textContent = '';
   $('#listaColonias').innerHTML = '';
@@ -3066,6 +3421,12 @@ async function cargarFormulario(folio) {
     if (el.type === 'checkbox') el.checked = v === 'SI';
     else el.value = v;
   });
+  frm.dataset.coloniaOriginal = registro.colonia || '';
+  frm.dataset.localidadOriginal = registro.localidad || '';
+  if (registro.localidad && registro.colonia && norm(registro.localidad) !== norm(registro.colonia)) {
+    $('#localidadHistorica').textContent = 'Localidad histórica: ' + registro.localidad + '. Se conserva mientras no cambie la colonia.';
+  }
+  frm.nombre.required = !frm.nombrePendiente.checked;
   $('#tituloForm').textContent = 'Datos de ' + folio + (registro.estadoRegistro === 'POR CONFIRMAR' ? ' (por confirmar)' : '');
   actualizarTodo();
   renderVacunas(registro.anexo, vacunas);
@@ -3095,8 +3456,8 @@ async function cargarDosisPendientes() {
     });
     // Estado de la cartilla de cada persona; los totales filtran la lista.
     const t = s.totales || { personas: 0 };
-    const ESTADO_PERSONA = { ATRASADA: 'Con dosis atrasadas', 'FALTA REGISTRAR': 'Dosis por registrar', PENDIENTE: 'Le toca una dosis', 'AL CORRIENTE': 'Al corriente' };
-    const ESTADO_VACUNA = { ATRASADA: 'atrasada', 'FALTA REGISTRAR': 'falta registrar', PENDIENTE: 'le toca', PROXIMA: 'próxima', 'EN CURSO': 'en curso', COMPLETA: 'completa' };
+    const ESTADO_PERSONA = { REVISION: 'Antecedentes por revisar', ATRASADA: 'Con dosis atrasadas', 'FALTA REGISTRAR': 'Dosis por registrar', PENDIENTE: 'Le toca una dosis', 'AL CORRIENTE': 'Al corriente' };
+    const ESTADO_VACUNA = { REVISION: 'requiere revisión', ATRASADA: 'atrasada', 'FALTA REGISTRAR': 'falta registrar', PENDIENTE: 'le toca', PROXIMA: 'próxima', 'EN CURSO': 'en curso', COMPLETA: 'completa' };
     const total = (clave, texto) => `<button type="button" data-filtro="${clave}" aria-pressed="${clave === '' ? 'true' : 'false'}"><b>${clave ? t[clave] || 0 : t.personas}</b>${texto}</button>`;
     const cartillas = (s.cartillas || []).map(x => `<li data-estado="${esc(x.estado)}"><div><b>${esc(x.nombre)}</b>
         <span class="hint">${esc(x.edad)} años${x.embarazada ? ' · embarazada' : ''} · <span class="etq ${claseEstado(x.estado)}">${ESTADO_PERSONA[x.estado]}</span></span>
@@ -3106,7 +3467,7 @@ async function cargarDosisPendientes() {
     cont.innerHTML =
       `<details class="seg-grupo" open><summary>Estado de la cartilla <span class="etq ${t.ATRASADA ? 'ATRASADA' : 'AL'}">${t.personas}</span></summary>
         <p class="hint">Cada persona de la unidad con el estado de cada vacuna que le corresponde. Toque un total para filtrar.</p>
-        <div class="seg-totales">${total('', 'Personas')}${total('ATRASADA', 'Con dosis atrasadas')}${total('FALTA REGISTRAR', 'Dosis por registrar')}${total('PENDIENTE', 'Le toca una dosis')}${total('AL CORRIENTE', 'Al corriente')}</div>
+        <div class="seg-totales">${total('', 'Personas')}${total('REVISION', 'Antecedentes por revisar')}${total('ATRASADA', 'Con dosis atrasadas')}${total('FALTA REGISTRAR', 'Dosis por registrar')}${total('PENDIENTE', 'Le toca una dosis')}${total('AL CORRIENTE', 'Al corriente')}</div>
         ${cartillas ? `<ul class="seg-lista" id="segCartillas">${cartillas}</ul>` : '<p class="hint">Aún no hay personas en esta unidad.</p>'}</details>` +
       grupo('Les falta una dosis', personas.length, s.dosis.some(x => x.estado === 'ATRASADA') ? 'ATRASADA' : 'PENDIENTE',
         'Dosis atrasadas, que ya les tocan o que les tocan en los próximos 30 días.',
@@ -3196,6 +3557,27 @@ function descargarPdf(bytes, nombre) {
   $('#impAvisos').insertAdjacentHTML('afterbegin',
     `<li><a href="${url}" target="_blank" download="${esc(nombre)}">Abrir ${esc(nombre)}</a></li>`);
 }
+
+function descargarArchivo(bytes, nombre, tipo) {
+  const url = URL.createObjectURL(new Blob([bytes], { type: tipo }));
+  const a = document.createElement('a');
+  a.href = url; a.download = nombre; document.body.appendChild(a); a.click(); a.remove();
+  $('#impAvisos').insertAdjacentHTML('beforeend', `<li><a href="${url}" target="_blank" rel="noopener" download="${esc(nombre)}">Descargar ${esc(nombre)}</a></li>`);
+}
+$('#btnCampana').addEventListener('click', async () => {
+  const clues = CBI.impClues.valor, desde = $('#campDesde').value;
+  if (!clues || !desde) return msgImp('Seleccione unidad y primer día del concentrado', true);
+  const btn = $('#btnCampana'); btn.disabled = true; $('#impAvisos').innerHTML = '';
+  try {
+    msgImp('Preparando el concentrado sobre el formato oficial…');
+    const r = await llamar('generarInformeCampana', { clues, desde });
+    descargarArchivo(Uint8Array.from(atob(r.base64), c => c.charCodeAt(0)), r.nombre, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    const nombreCalidad = r.nombre.replace(/\.xlsx$/, '_calidad.json');
+    descargarArchivo(JSON.stringify(r.calidad, null, 2), nombreCalidad, 'application/json');
+    msgImp(`${r.calidad.clasificadas} aplicaciones clasificadas de ${r.calidad.total}; ${r.calidad.pendientes.length} pendientes de revisión. Revise el reporte de calidad antes de entregar.`);
+    r.calidad.avisos.forEach(a => { const li = document.createElement('li'); li.textContent = a.motivo; $('#impAvisos').appendChild(li); });
+  } catch (e) { msgImp(e.message, true); } finally { btn.disabled = false; }
+});
 
 /** Dosis aplicadas en la unidad en el periodo (sin previas), por vacuna y dosis. */
 async function contarDosisAplicadas() {
@@ -3918,7 +4300,8 @@ async function alCambiarCP() {
     frm.colonia.value = colonias.length === 1 ? colonias[0] : '';
     m.className = 'ayuda ok';
     m.textContent = `✓ ${r.municipio}, ${r.estado} · ${colonias.length} colonia(s)` + (!ent || !mun ? ' · Seleccione entidad/municipio del catálogo manualmente' : '');
-    (colonias.length === 1 ? CB.localidad.input : frm.colonia).focus();
+    CB.localidad.fijar(frm.colonia.value, true);
+    frm.colonia.focus();
   } catch (e) {
     if (mio === cpSeq) {
       m.className = 'ayuda err';
@@ -3927,6 +4310,14 @@ async function alCambiarCP() {
   }
 }
 frm.cp.addEventListener('input', alCambiarCP);
+frm.colonia.addEventListener('input', () => {
+  CB.localidad.fijar(frm.colonia.value.trim(), true);
+  $('#localidadHistorica').textContent = '';
+});
+frm.nombrePendiente.addEventListener('change', () => {
+  frm.nombre.required = !frm.nombrePendiente.checked;
+  if (frm.nombrePendiente.checked && !frm.curp.value.trim()) frm.curp.value = 'SIN CURP';
+});
 
 ['change', 'input'].forEach(ev => $('#vacunas').addEventListener(ev, e => {
   if (e.target.matches('.f, .m, .fu')) pintarEsquema();

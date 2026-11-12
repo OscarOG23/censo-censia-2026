@@ -78,22 +78,27 @@
         <input name="curp" id="curp" maxlength="18" autocomplete="off" spellcheck="false" required>
       </label>
       <p class="ayuda" id="curpAyuda">La fecha de nacimiento y el sexo se toman de su CURP.</p>
+      <label class="op"><input type="checkbox" id="sinCurp"> Aún no tiene CURP (por ejemplo, recién nacido)</label>
     </div>
     <div class="tarjeta">
       <h2>Datos de la persona que se vacunará</h2>
       <label class="campo">Apellido paterno <input name="paterno" autocomplete="family-name" required></label>
       <label class="campo">Apellido materno <input name="materno"></label>
       <label class="campo">Nombre(s) <input name="nombre" autocomplete="given-name" required></label>
+      <label class="op"><input type="checkbox" id="nombrePendiente"> Recién nacido: nombre pendiente de asignación</label>
       <label class="campo">Fecha de nacimiento <input type="date" name="fechaNacimiento" id="nac" required></label>
-      <label class="campo">Sexo <select name="sexo" id="sexo" required><option value="">—</option><option value="H">Hombre</option><option value="M">Mujer</option></select></label>
+      <label class="campo">Sexo <select name="sexo" id="sexo" required><option value="">—</option><option value="H">Niño / hombre</option><option value="M">Niña / mujer</option></select></label>
       <label class="campo">Teléfono celular (10 dígitos) <input type="tel" name="telefono" inputmode="numeric" maxlength="10" autocomplete="tel-national"></label>
       <label class="campo">Servicio de salud que tiene
-        <select name="derechohabiencia"><option value="">—</option><option>IMSS</option><option>ISSSTE</option><option>IMSS-BIENESTAR</option><option>OTRA</option><option>NINGUNA</option></select></label>
+        <select name="derechohabiencia"><option>IMSS</option><option>ISSSTE</option><option selected>IMSS-BIENESTAR</option><option>OTRA</option><option>NINGUNA</option></select></label>
       <label class="op"><input type="checkbox" id="indigena"> Se reconoce como indígena o afromexicano(a)</label>
     </div>
     <div class="tarjeta oculto" id="tutor">
       <h2>Mamá, papá o tutor (menor de 18 años)</h2>
       <label class="campo">Nombre completo <input name="acompNombre"></label>
+      <label class="campo">CURP de mamá, papá o tutor, si la tiene <input name="acompCurp" maxlength="18" autocomplete="off" spellcheck="false"></label>
+      <label class="campo">En nacimiento múltiple, orden de nacimiento <select name="ordenNacimiento"><option value="">No corresponde / no se conoce</option><option value="1">Primero</option><option value="2">Segundo</option><option value="3">Tercero</option><option value="4">Cuarto</option><option value="5">Quinto</option></select></label>
+      <label class="campo">Hora de nacimiento, si la conoce <input type="time" name="horaNacimiento"></label>
       <label class="campo">Parentesco <select name="parentesco"><option value="">—</option><option value="MADRE">Madre</option><option value="PADRE">Padre</option>
         <option value="ABUELO(A)">Abuelo(a)</option><option value="TÍO(A)">Tío(a)</option><option value="TUTOR">Tutor</option><option value="OTRO">Otro</option></select></label>
     </div>
@@ -107,7 +112,7 @@
       <label class="campo">Código postal <input name="cp" id="cp" inputmode="numeric" maxlength="5"></label>
       <p class="ayuda" id="cpAyuda"></p>
       <label class="campo">Municipio <input name="municipio" id="municipio"></label>
-      <label class="campo">Colonia <input name="colonia" id="colonia" list="colonias"><datalist id="colonias"></datalist></label>
+      <label class="campo">Colonia / localidad <input name="colonia" id="colonia" list="colonias"><datalist id="colonias"></datalist></label>
       <label class="campo">Calle <input name="calle"></label>
       <label class="campo">Número <input name="numExt"></label>
       <input type="hidden" name="entidad" id="entidad">
@@ -384,6 +389,9 @@
 </script>
 <script>
 const $ = s => document.querySelector(s);
+// El comprobante permite continuar en este navegador sin consultar expedientes por CURP.
+const solicitudPublica = sessionStorage.getItem('censiaEnvioPaciente') || crypto.randomUUID();
+sessionStorage.setItem('censiaEnvioPaciente', solicitudPublica);
 const llamar = (fn, ...args) => fetch(window.API_CENSIA, {
   method: 'POST', credentials: 'omit', redirect: 'follow',
   headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn, args })
@@ -411,6 +419,17 @@ function reglas() {
   if (!puede) $('#embarazada').checked = false;
   $('#fumCampo').classList.toggle('oculto', !$('#embarazada').checked);
 }
+$('#sinCurp').addEventListener('change', e => {
+  $('#curp').disabled = e.target.checked;
+  $('#curp').required = !e.target.checked;
+  if (e.target.checked) $('#curp').value = '';
+});
+$('#nombrePendiente').addEventListener('change', e => {
+  const campo = $('#f').elements.nombre;
+  campo.disabled = e.target.checked;
+  campo.required = !e.target.checked;
+  if (e.target.checked) campo.value = '';
+});
 /* QR de la constancia CURP (RENAPO): CapturaCENSIA.leerQRCurp y LectorQR, los mismos que usa la unidad. */
 let jsqrCargando = null;
 function cargarJsQR() {
@@ -481,12 +500,14 @@ $('#f').addEventListener('submit', async ev => {
   new FormData($('#f')).forEach((v, k) => { datos[k] = String(v).trim(); });
   Object.assign(datos, {
     indigena: $('#indigena').checked ? 'SI' : 'NO', embarazada: $('#embarazada').checked ? 'SI' : 'NO',
-    seguimientoWA: $('#whatsapp').checked ? 'SI' : 'NO', privacidad: $('#privacidad').checked
+    seguimientoWA: $('#whatsapp').checked ? 'SI' : 'NO', privacidad: $('#privacidad').checked,
+    curp: $('#sinCurp').checked ? 'SIN CURP' : datos.curp,
+    nombrePendiente: $('#nombrePendiente').checked ? 'SI' : 'NO', localidad: datos.colonia || '', solicitud: solicitudPublica
   });
   const faltan = [];
   if (!datos.curp) faltan.push('CURP');
   if (!datos.paterno && !datos.materno) faltan.push('apellidos');
-  if (!datos.nombre) faltan.push('nombre');
+  if (!datos.nombre && datos.nombrePendiente !== 'SI') faltan.push('nombre');
   if (!datos.fechaNacimiento) faltan.push('fecha de nacimiento');
   if (!datos.sexo) faltan.push('sexo');
   if (!$('#tutor').classList.contains('oculto') && (!datos.acompNombre || !datos.parentesco)) faltan.push('datos de mamá, papá o tutor');
@@ -500,14 +521,28 @@ $('#f').addEventListener('submit', async ev => {
   btn.disabled = true;
   btn.textContent = 'Enviando…';
   try {
-    const r = await llamar('autorregistro', datos);
+    const r = await llamar('capturaPacienteCrear', datos);
+    if (r.token) {
+      sessionStorage.setItem('censiaCapturaPaciente', r.token);
+      sessionStorage.removeItem('censiaEnvioPaciente');
+      window.location.assign('captura.html#' + encodeURIComponent(r.token));
+      return;
+    }
     $('#f').classList.add('oculto');
     const hecho = $('#hecho');
     hecho.classList.remove('oculto');
     hecho.innerHTML = r.estado === 'RECIBIDO'
       ? '<div class="ok"><b>Registro recibido.</b><br>Cuando acuda a su unidad de salud, presente su CURP: el personal encontrará su registro y anotará su vacuna.</div>' +
         '<ol class="sigue"><li>Acuda a su unidad de salud con su <b>CURP</b> y, si la tiene, su <b>cartilla de vacunación</b>.</li><li>El personal revisará sus datos y le dirá qué vacunas le corresponden.</li><li>No necesita registrarse otra vez: su registro sirve en cualquier unidad.</li></ol>'
-      : '<div class="ok"><b>Ya tiene un registro.</b><br>Presente su CURP en su unidad de salud. Si necesita corregir algún dato, el personal lo hará ahí.</div>';
+      : '<div class="ok"><b>Ya tiene un registro.</b><br>Para precargarlo se necesita su comprobante vigente o verificar su identidad en la unidad. El personal abrirá su expediente y continuará con la aplicación sin volver a registrar sus datos.</div>';
+    if (sessionStorage.getItem('censiaCapturaPaciente')) {
+      const continuar = document.createElement('button');
+      continuar.type = 'button';
+      continuar.textContent = 'Continuar con mi comprobante de este navegador';
+      continuar.addEventListener('click', () => window.location.assign('captura.html'));
+      hecho.appendChild(continuar);
+    }
+    sessionStorage.removeItem('censiaEnvioPaciente');
     $('#pasos').classList.add('oculto');
     window.scrollTo(0, 0);
   } catch (e) {
